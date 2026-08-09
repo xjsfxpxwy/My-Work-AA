@@ -3,142 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>诊断 three-mesh-bvh</title>
+    <title>CDN 测试 three-mesh-bvh</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial; }
         #info {
             position: absolute; top: 20px; left: 20px;
             background: rgba(0,0,0,0.7); color: white;
             padding: 10px 20px; border-radius: 5px;
-            pointer-events: none; z-index: 10; max-width: 90%;
-            white-space: pre-wrap;
+            pointer-events: none; z-index: 10;
         }
     </style>
 </head>
 <body>
-    <div id="info">正在诊断...</div>
+    <div id="info">正在从 CDN 加载...</div>
 
+    <!-- 使用 importmap 直接指向 CDN -->
     <script type="importmap">
     {
         "imports": {
-            "three": "./001.js",
-            "three-mesh-bvh": "./002.js"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.4/build/index.module.js"
         }
     }
     </script>
 
     <script type="module">
         import * as THREE from 'three';
-        import * as BVH from 'three-mesh-bvh';
+        import { MeshBVH } from 'three-mesh-bvh';
 
         const infoDiv = document.getElementById('info');
-        let diagInfo = '';
-
-        function log(msg) {
-            diagInfo += msg + '\n';
-            infoDiv.textContent = diagInfo;
-            console.log(msg);
-        }
 
         try {
-            log(`Three.js 版本: ${THREE.REVISION}`);
-            log('BVH 模块导出对象: ' + Object.keys(BVH).join(', '));
+            infoDiv.textContent = `Three.js ${THREE.REVISION}，正在构建 BVH...`;
 
-            // 提取可能的 MeshBVH
-            let MeshBVH = BVH.MeshBVH || BVH.default?.MeshBVH || BVH.default || BVH;
-            if (MeshBVH && typeof MeshBVH === 'object' && !MeshBVH.build && MeshBVH.MeshBVH) {
-                MeshBVH = MeshBVH.MeshBVH;
-            }
-            log('使用的 MeshBVH 类型: ' + typeof MeshBVH);
-            if (MeshBVH) {
-                log('MeshBVH 属性: ' + Object.keys(MeshBVH).join(', '));
-                if (MeshBVH.prototype) {
-                    log('MeshBVH 原型方法: ' + Object.getOwnPropertyNames(MeshBVH.prototype).join(', '));
-                }
+            // 检查 MeshBVH
+            console.log('MeshBVH:', MeshBVH);
+            if (typeof MeshBVH.build !== 'function') {
+                throw new Error('MeshBVH.build 不是函数');
             }
 
-            if (!MeshBVH) throw new Error('无法提取 MeshBVH');
-
-            // 创建基础场景（便于查看）
+            // 场景
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x111122);
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
             camera.position.set(3, 2, 5);
             camera.lookAt(0, 0, 0);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(innerWidth, innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            const geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
-            const material = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.4 });
-            const mesh = new THREE.Mesh(geometry, material);
+            const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.4 });
+            const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(0, 0.5, 0);
             scene.add(mesh);
 
-            // 光照
+            // 构建 BVH
+            MeshBVH.build(geo);
+            if (!geo.boundsTree) throw new Error('构建失败');
+
             scene.add(new THREE.AmbientLight(0x404040, 0.6));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(1, 2, 1);
-            scene.add(dirLight);
+            const dir = new THREE.DirectionalLight(0xffffff, 1);
+            dir.position.set(1, 2, 1);
+            scene.add(dir);
             scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
-            // ========== 尝试多种 BVH 构建方式 ==========
-            let bvhBuilt = false;
-
-            // 方式1：静态 build 方法
-            if (typeof MeshBVH.build === 'function') {
-                log('尝试 MeshBVH.build(geometry)');
-                MeshBVH.build(geometry);
-                bvhBuilt = !!geometry.boundsTree;
-            }
-
-            // 方式2：MeshBVH 是一个类，需要实例化并赋值
-            if (!bvhBuilt && typeof MeshBVH === 'function') {
-                log('尝试 new MeshBVH(geometry)');
-                try {
-                    const bvhInstance = new MeshBVH(geometry);
-                    if (bvhInstance) {
-                        geometry.boundsTree = bvhInstance;
-                        bvhBuilt = true;
-                    }
-                } catch (e) {
-                    log('new MeshBVH(geometry) 失败: ' + e.message);
-                }
-            }
-
-            // 方式3：computeBoundsTree 作为静态方法
-            if (!bvhBuilt && typeof MeshBVH.computeBoundsTree === 'function') {
-                log('尝试 MeshBVH.computeBoundsTree(geometry)');
-                MeshBVH.computeBoundsTree(geometry);
-                bvhBuilt = !!geometry.boundsTree;
-            }
-
-            // 方式4：存在 serialize/deserialize，尝试间接构建
-            if (!bvhBuilt && typeof MeshBVH.deserialize === 'function') {
-                log('尝试通过 deserialize 构建 BVH');
-                // 序列化再反序列化（空 BVH 可能无效，仅测试）
-                const serialized = MeshBVH.serialize(geometry);
-                if (serialized) {
-                    MeshBVH.deserialize(serialized, geometry);
-                    bvhBuilt = !!geometry.boundsTree;
-                }
-            }
-
-            // 方式5：原型扩展方式 (旧版)
-            if (!bvhBuilt && typeof MeshBVH === 'function') {
-                log('尝试使用 MeshBVH 作为扩展函数');
-                geometry.computeBoundsTree = MeshBVH;
-                geometry.computeBoundsTree();
-                bvhBuilt = !!geometry.boundsTree;
-            }
-
-            if (!bvhBuilt) {
-                throw new Error('所有 BVH 构建方法均失败，请查看控制台诊断信息');
-            }
-
-            log('✅ BVH 构建成功！');
-
-            // 动画
             function animate() {
                 requestAnimationFrame(animate);
                 mesh.rotation.y += 0.005;
@@ -147,15 +76,16 @@
             animate();
 
             window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.aspect = innerWidth/innerHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setSize(innerWidth, innerHeight);
             });
 
-        } catch (error) {
-            log('❌ 测试失败: ' + error.message);
+            infoDiv.textContent = `✅ CDN 测试成功！BVH 已构建 (Three.js ${THREE.REVISION})`;
+        } catch (e) {
+            infoDiv.textContent = `❌ CDN 测试失败: ${e.message}`;
             infoDiv.style.background = 'rgba(200,0,0,0.8)';
-            console.error(error);
+            console.error(e);
         }
     </script>
 </body>
