@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDN 测试 three-mesh-bvh</title>
+    <title>测试 three-bvh-csg (003.js)</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial; }
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
         #info {
             position: absolute; top: 20px; left: 20px;
             background: rgba(0,0,0,0.7); color: white;
             padding: 10px 20px; border-radius: 5px;
-            pointer-events: none; z-index: 10;
+            pointer-events: none; z-index: 10; max-width: 90%;
         }
     </style>
 </head>
 <body>
-    <div id="info">正在从 CDN 加载...</div>
+    <div id="info">正在加载...</div>
 
-    <!-- 使用 importmap 直接指向 CDN -->
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.4/build/index.module.js"
+            "three": "./001.js",
+            "three-mesh-bvh": "./002.js",
+            "three-bvh-csg": "./003.js"
         }
     }
     </script>
@@ -30,16 +30,16 @@
     <script type="module">
         import * as THREE from 'three';
         import { MeshBVH } from 'three-mesh-bvh';
+        import { CSG } from 'three-bvh-csg';
 
         const infoDiv = document.getElementById('info');
 
         try {
-            infoDiv.textContent = `Three.js ${THREE.REVISION}，正在构建 BVH...`;
+            infoDiv.textContent = `Three.js ${THREE.REVISION} | 正在测试布尔运算...`;
 
-            // 检查 MeshBVH
-            console.log('MeshBVH:', MeshBVH);
-            if (typeof MeshBVH.build !== 'function') {
-                throw new Error('MeshBVH.build 不是函数');
+            // 检查 CSG 导出
+            if (!CSG || typeof CSG.subtract !== 'function') {
+                throw new Error('CSG.subtract 不是函数，请检查 003.js');
             }
 
             // 场景
@@ -52,25 +52,57 @@
             renderer.setSize(innerWidth, innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            const geo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
-            const mat = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.4 });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(0, 0.5, 0);
-            scene.add(mesh);
+            // 创建一个立方体和一个球体用于布尔运算
+            const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
+            // 球体稍微偏移，让减法结果更明显
+            const sphereMesh = new THREE.Mesh(sphereGeo);
+            sphereMesh.position.set(0.7, 0.7, 0.7);
 
-            // 构建 BVH
-            MeshBVH.build(geo);
-            if (!geo.boundsTree) throw new Error('构建失败');
+            // 为两个几何体构建 BVH
+            new MeshBVH(boxGeo).copyTo(boxGeo); // 简化：直接 new 并赋值
+            const boxBVH = new MeshBVH(boxGeo);
+            boxGeo.boundsTree = boxBVH;
 
+            const sphereBVH = new MeshBVH(sphereGeo);
+            sphereGeo.boundsTree = sphereBVH;
+
+            // 执行减法：立方体 - 球体
+            const resultMesh = CSG.subtract(
+                new THREE.Mesh(boxGeo),
+                sphereMesh
+            );
+
+            // 如果结果是单个 Mesh，直接添加；如果是 Group，则添加整个组
+            if (resultMesh) {
+                if (resultMesh.isMesh) {
+                    scene.add(resultMesh);
+                } else if (resultMesh.isGroup) {
+                    scene.add(resultMesh);
+                } else {
+                    // 可能是多个对象，尝试添加
+                    if (Array.isArray(resultMesh)) {
+                        resultMesh.forEach(m => scene.add(m));
+                    } else {
+                        scene.add(resultMesh);
+                    }
+                }
+            } else {
+                throw new Error('CSG.subtract 返回了空值');
+            }
+
+            // 光照
             scene.add(new THREE.AmbientLight(0x404040, 0.6));
-            const dir = new THREE.DirectionalLight(0xffffff, 1);
-            dir.position.set(1, 2, 1);
-            scene.add(dir);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(1, 2, 1);
+            scene.add(dirLight);
             scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
+            // 动画（旋转结果）
+            const resultObj = scene.children.find(c => c.isMesh || c.isGroup);
             function animate() {
                 requestAnimationFrame(animate);
-                mesh.rotation.y += 0.005;
+                if (resultObj) resultObj.rotation.y += 0.005;
                 renderer.render(scene, camera);
             }
             animate();
@@ -81,11 +113,12 @@
                 renderer.setSize(innerWidth, innerHeight);
             });
 
-            infoDiv.textContent = `✅ CDN 测试成功！BVH 已构建 (Three.js ${THREE.REVISION})`;
-        } catch (e) {
-            infoDiv.textContent = `❌ CDN 测试失败: ${e.message}`;
+            infoDiv.textContent = `✅ 003.js 测试成功！布尔减法已完成 (立方体 - 球体)`;
+
+        } catch (error) {
+            infoDiv.textContent = `❌ 失败: ${error.message}`;
             infoDiv.style.background = 'rgba(200,0,0,0.8)';
-            console.error(e);
+            console.error(error);
         }
     </script>
 </body>
