@@ -27,7 +27,6 @@
 <body>
     <div id="info">正在加载 Three.js + three-mesh-bvh...</div>
 
-    <!-- 导入映射 -->
     <script type="importmap">
     {
         "imports": {
@@ -39,62 +38,81 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { MeshBVH, MeshBVHHelper } from 'three-mesh-bvh';
+        // 全部导入，避免命名导出失败
+        import * as BVH from 'three-mesh-bvh';
 
         const infoDiv = document.getElementById('info');
 
         try {
-            infoDiv.innerHTML = `Three.js 版本: ${THREE.REVISION}<br>正在测试 MeshBVH...`;
+            infoDiv.innerHTML = `Three.js 版本: ${THREE.REVISION}<br>正在检查 BVH 模块...`;
 
-            // 调试输出 MeshBVH 的结构
-            console.log('MeshBVH 导出内容:', MeshBVH);
-            console.log('MeshBVH.build 方法:', MeshBVH.build);
+            // 打印全部导出，便于诊断
+            console.log('BVH 模块完整导出:', BVH);
 
-            // 检查 MeshBVH 是否有效
-            if (!MeshBVH || typeof MeshBVH !== 'object') {
-                throw new Error('MeshBVH 未正确导出（不是对象）');
+            // 尝试提取 MeshBVH（兼容命名导出和默认导出）
+            let MeshBVH = BVH.MeshBVH;
+            if (!MeshBVH && BVH.default) {
+                // 可能是默认导出内含 MeshBVH
+                MeshBVH = BVH.default.MeshBVH || BVH.default;
             }
+            if (!MeshBVH) {
+                throw new Error('无法找到 MeshBVH，请查看控制台 BVH 对象');
+            }
+
+            // 检查 MeshBVH.build 方法是否存在
             if (typeof MeshBVH.build !== 'function') {
-                throw new Error('MeshBVH.build 方法不存在，请检查 002.js 内容');
+                // 如果 build 方法不存在，尝试使用 computeBoundsTree 方式
+                if (typeof MeshBVH.computeBoundsTree === 'function') {
+                    // 给 geometry 添加方法
+                    const computeBoundsTree = MeshBVH.computeBoundsTree;
+                    // 测试：创建一个几何体
+                    const testGeo = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+                    testGeo.computeBoundsTree = computeBoundsTree;
+                    testGeo.computeBoundsTree();
+                    if (testGeo.boundsTree) {
+                        MeshBVH._buildMethod = 'computeBoundsTree'; // 标记
+                    } else {
+                        throw new Error('computeBoundsTree 执行后未生成 boundsTree');
+                    }
+                } else {
+                    throw new Error('MeshBVH 没有 build 或 computeBoundsTree 方法');
+                }
             }
 
-            // 创建场景
+            // 场景初始化
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x111122);
-
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(3, 2, 5);
             camera.lookAt(0, 0, 0);
-
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // 创建几何体
             const geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
             const material = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.4 });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(0, 0.5, 0);
             scene.add(mesh);
 
-            // 使用 MeshBVH.build 构建 BVH
-            MeshBVH.build(geometry);
+            // 根据之前的检测调用适当的方法
+            if (MeshBVH._buildMethod === 'computeBoundsTree') {
+                geometry.computeBoundsTree();
+            } else {
+                MeshBVH.build(geometry);
+            }
 
-            // 验证 BVH 是否构建成功
             if (!geometry.boundsTree) {
                 throw new Error('BVH 构建后未生成 boundsTree');
             }
 
-            // 光照
+            // 光照与地面
             scene.add(new THREE.AmbientLight(0x404040, 0.6));
             const dirLight = new THREE.DirectionalLight(0xffffff, 1);
             dirLight.position.set(1, 2, 1);
             scene.add(dirLight);
+            scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
-            const gridHelper = new THREE.GridHelper(4, 20, 0x888888, 0x444444);
-            scene.add(gridHelper);
-
-            // 动画循环
             function animate() {
                 requestAnimationFrame(animate);
                 mesh.rotation.y += 0.005;
@@ -102,7 +120,6 @@
             }
             animate();
 
-            // 窗口大小自适应
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -110,12 +127,12 @@
             });
 
             infoDiv.innerHTML = `Three.js 版本: ${THREE.REVISION}<br>✅ MeshBVH 加载成功，BVH 已构建`;
-            console.log('✅ three-mesh-bvh 测试通过！');
+            console.log('✅ 测试通过');
 
         } catch (error) {
             infoDiv.innerHTML = `❌ 测试失败:<br>${error.message}`;
             infoDiv.style.background = 'rgba(200,0,0,0.8)';
-            console.error('❌ 测试失败:', error);
+            console.error('❌ 失败:', error);
         }
     </script>
 </body>
