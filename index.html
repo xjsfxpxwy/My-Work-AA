@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>布尔运算测试 - 001/002/003</title>
+    <title>全依赖测试：001-004.js 布尔运算 + GUI</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial; }
         #info {
@@ -17,12 +17,14 @@
 <body>
     <div id="info">正在加载...</div>
 
+    <!-- 导入映射：四个本地文件 -->
     <script type="importmap">
     {
         "imports": {
             "three": "./001.js",
             "three-mesh-bvh": "./002.js",
-            "three-bvh-csg": "./003.js"
+            "three-bvh-csg": "./003.js",
+            "lil-gui": "./004.js"
         }
     }
     </script>
@@ -31,69 +33,126 @@
         import * as THREE from 'three';
         import { MeshBVH } from 'three-mesh-bvh';
         import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+        import GUI from 'lil-gui';
 
-        const info = document.getElementById('info');
+        const infoDiv = document.getElementById('info');
 
-        try {
-            info.textContent = 'Three.js ' + THREE.REVISION + ' | 构建 BVH...';
+        // ========== 场景初始化 ==========
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+        camera.position.set(3, 2, 5);
+        camera.lookAt(0, 0, 0);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-            // 场景
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111122);
-            const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-            camera.position.set(3, 2, 5);
-            camera.lookAt(0, 0, 0);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(innerWidth, innerHeight);
-            document.body.appendChild(renderer.domElement);
+        // 光照
+        scene.add(new THREE.AmbientLight(0x404040, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(1, 2, 1);
+        scene.add(dirLight);
+        const grid = new THREE.GridHelper(4, 20, 0x888888, 0x444444);
+        scene.add(grid);
 
-            // 几何体
-            const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
+        // ========== 布尔运算准备 ==========
+        const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
+        // 构建 BVH
+        boxGeo.boundsTree = new MeshBVH(boxGeo);
+        sphereGeo.boundsTree = new MeshBVH(sphereGeo);
 
-            // 构建 BVH
-            boxGeo.boundsTree = new MeshBVH(boxGeo);
-            sphereGeo.boundsTree = new MeshBVH(sphereGeo);
+        const boxBrush = new Brush(boxGeo);
+        const sphereBrush = new Brush(sphereGeo);
+        sphereBrush.position.set(0.7, 0.7, 0.7);
+        sphereBrush.updateMatrixWorld();
 
-            // 创建 Brush
-            const boxBrush = new Brush(boxGeo);
-            const sphereBrush = new Brush(sphereGeo);
-            sphereBrush.position.set(0.7, 0.7, 0.7);
-            sphereBrush.updateMatrixWorld(); // 必须调用！
+        const evaluator = new Evaluator();
+        const result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
+        scene.add(result);
 
-            // 执行减法
-            const evaluator = new Evaluator();
-            const result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
-            if (!result) throw new Error('减法返回空');
-            scene.add(result);
-
-            // 光照与辅助
-            scene.add(new THREE.AmbientLight(0x404040, 0.6));
-            const dir = new THREE.DirectionalLight(0xffffff, 1);
-            dir.position.set(1, 2, 1);
-            scene.add(dir);
-            scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
-
-            // 旋转
-            function animate() {
-                requestAnimationFrame(animate);
-                result.rotation.y += 0.005;
-                renderer.render(scene, camera);
+        // ========== GUI 配置 ==========
+        const settings = {
+            rotationSpeed: 0.005,
+            color: 0x4cc9f0,
+            roughness: 0.4,
+            metalness: 0.1,
+            wireframe: false,
+            gridVisible: true,
+            // 重置场景功能（可选）
+            reset: () => {
+                sphereBrush.position.set(0.7, 0.7, 0.7);
+                sphereBrush.updateMatrixWorld();
+                const newResult = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
+                scene.remove(result);
+                scene.add(newResult);
+                // 更新引用
+                settings.rotationSpeed = 0.005;
+                updateMaterial();
             }
-            animate();
+        };
 
-            window.addEventListener('resize', () => {
-                camera.aspect = innerWidth/innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-            });
+        const gui = new GUI({ title: '控制面板', width: 300 });
+        gui.add(settings, 'rotationSpeed', 0, 0.02).name('旋转速度');
+        gui.addColor(settings, 'color').name('颜色').onChange(v => updateMaterial());
+        gui.add(settings, 'roughness', 0, 1).name('粗糙度').onChange(v => updateMaterial());
+        gui.add(settings, 'metalness', 0, 1).name('金属感').onChange(v => updateMaterial());
+        gui.add(settings, 'wireframe').name('线框模式').onChange(v => updateMaterial());
+        gui.add(settings, 'gridVisible').name('显示网格').onChange(v => grid.visible = v);
+        gui.add(settings, 'reset').name('重置默认');
 
-            info.textContent = '✅ 布尔运算成功！立方体 - 球体 (Three.js ' + THREE.REVISION + ')';
-        } catch (e) {
-            info.textContent = '❌ 错误: ' + e.message;
-            info.style.background = 'rgba(200,0,0,0.8)';
-            console.error(e);
+        function updateMaterial() {
+            if (result.material) {
+                result.material.color.set(settings.color);
+                result.material.roughness = settings.roughness;
+                result.material.metalness = settings.metalness;
+                result.material.wireframe = settings.wireframe;
+                result.material.needsUpdate = true;
+            }
         }
+
+        // 初始化材质
+        if (result.material) {
+            result.material = new THREE.MeshStandardMaterial({
+                color: settings.color,
+                roughness: settings.roughness,
+                metalness: settings.metalness,
+                wireframe: settings.wireframe
+            });
+        }
+        // 为结果添加一个简单的材质（如果丢失）
+        if (!result.material) {
+            result.material = new THREE.MeshStandardMaterial({
+                color: settings.color,
+                roughness: settings.roughness,
+                metalness: settings.metalness,
+                wireframe: settings.wireframe
+            });
+        }
+
+        // ========== 动画循环 ==========
+        function animate() {
+            requestAnimationFrame(animate);
+            result.rotation.y += settings.rotationSpeed;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 窗口自适应
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        infoDiv.textContent = '✅ 全部依赖加载成功！使用 GUI 调整参数 (Three.js ' + THREE.REVISION + ')';
+        console.log('✅ 001~004.js 全部测试通过');
+
+        // 捕获初始化错误
+        window.addEventListener('error', (e) => {
+            infoDiv.textContent = '❌ 运行时错误: ' + e.message;
+            infoDiv.style.background = 'rgba(200,0,0,0.8)';
+        });
     </script>
 </body>
 </html>
