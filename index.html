@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDN 布尔运算测试</title>
+    <title>诊断加载问题</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial; }
-        #info {
+        body { margin: 0; overflow: hidden; font-family: Arial; background: #111; color: white; }
+        #log {
             position: absolute; top: 20px; left: 20px;
-            background: rgba(0,0,0,0.7); color: white;
-            padding: 10px 20px; border-radius: 5px;
-            pointer-events: none; z-index: 10; max-width: 90%;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 5px;
+            max-width: 90%; white-space: pre-wrap; font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div id="info">正在加载（CDN）...</div>
+    <div id="log">🔄 开始加载...</div>
 
-    <!-- 使用 importmap 指向 CDN -->
+    <!-- 如果网络无法访问 jsdelivr，可尝试 unpkg 或 esm.sh -->
     <script type="importmap">
     {
         "imports": {
@@ -29,56 +28,62 @@
     </script>
 
     <script type="module">
-        import * as THREE from 'three';
-        import { MeshBVH } from 'three-mesh-bvh';
-        import { CSG } from 'three-bvh-csg';
+        const logDiv = document.getElementById('log');
+        function log(msg) {
+            logDiv.textContent += '\n' + msg;
+            console.log(msg);
+        }
 
-        const infoDiv = document.getElementById('info');
-
-        // 超时保护：如果 5 秒后还没成功，显示超时
+        // 超时保护
         const timeout = setTimeout(() => {
-            infoDiv.textContent = '⚠️ 加载超时，请检查网络或 F12 控制台';
-            infoDiv.style.background = 'rgba(200,100,0,0.8)';
+            log('⏰ 超时（5秒）——可能模块加载卡住，查看控制台网络/错误');
         }, 5000);
 
         try {
-            infoDiv.textContent = `Three.js ${THREE.REVISION}，构建 BVH...`;
+            log('1️⃣ 导入 Three.js...');
+            const three = await import('three');
+            log('✅ Three.js 版本: ' + three.REVISION);
+            window.THREE = three;
 
-            // 场景
+            log('2️⃣ 导入 three-mesh-bvh...');
+            const bvh = await import('three-mesh-bvh');
+            log('✅ BVH 导入成功，MeshBVH: ' + typeof bvh.MeshBVH);
+
+            log('3️⃣ 导入 three-bvh-csg...');
+            const csg = await import('three-bvh-csg');
+            log('✅ CSG 导入成功，CSG.subtract: ' + typeof csg.CSG.subtract);
+
+            // 简单场景测试
+            log('4️⃣ 创建场景...');
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x111122);
             const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-            camera.position.set(3, 2, 5);
-            camera.lookAt(0, 0, 0);
+            camera.position.z = 5;
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(innerWidth, innerHeight);
             document.body.appendChild(renderer.domElement);
+            log('✅ WebGL 渲染器已创建');
 
-            const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
+            const boxGeo = new THREE.BoxGeometry(1.5,1.5,1.5);
+            const sphereGeo = new THREE.SphereGeometry(0.9,32,32);
             const sphereMesh = new THREE.Mesh(sphereGeo);
-            sphereMesh.position.set(0.7, 0.7, 0.7);
+            sphereMesh.position.set(0.7,0.7,0.7);
 
-            // BVH 构建（正确方式）
-            boxGeo.boundsTree = new MeshBVH(boxGeo);
-            sphereGeo.boundsTree = new MeshBVH(sphereGeo);
+            log('5️⃣ 构建 BVH...');
+            boxGeo.boundsTree = new bvh.MeshBVH(boxGeo);
+            sphereGeo.boundsTree = new bvh.MeshBVH(sphereGeo);
+            log('✅ BVH 构建完成');
 
-            // 布尔减法
-            const result = CSG.subtract(
-                new THREE.Mesh(boxGeo),
-                sphereMesh
-            );
-
-            if (!result) throw new Error('减法结果为空');
-
+            log('6️⃣ 执行布尔减法...');
+            const result = csg.CSG.subtract(new THREE.Mesh(boxGeo), sphereMesh);
+            if (!result) throw new Error('减法返回空');
             scene.add(result.isMesh ? result : (result.mesh || result));
+            log('✅ 减法成功');
 
-            // 光照
-            scene.add(new THREE.AmbientLight(0x404040, 0.6));
-            const dir = new THREE.DirectionalLight(0xffffff, 1);
-            dir.position.set(1, 2, 1);
+            scene.add(new THREE.AmbientLight(0x404040,0.6));
+            const dir = new THREE.DirectionalLight(0xffffff,1);
+            dir.position.set(1,2,1);
             scene.add(dir);
-            scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
             const obj = scene.children.find(c => c.isMesh);
             function animate() {
@@ -87,7 +92,6 @@
                 renderer.render(scene, camera);
             }
             animate();
-
             window.addEventListener('resize', () => {
                 camera.aspect = innerWidth/innerHeight;
                 camera.updateProjectionMatrix();
@@ -95,13 +99,12 @@
             });
 
             clearTimeout(timeout);
-            infoDiv.textContent = `✅ CDN 测试成功！布尔减法已完成 (立方体 - 球体)`;
-            infoDiv.style.background = 'rgba(0,0,0,0.7)';
-        } catch (e) {
+            log('🎉 全部成功！');
+
+        } catch (error) {
             clearTimeout(timeout);
-            infoDiv.textContent = `❌ 失败: ${e.message}`;
-            infoDiv.style.background = 'rgba(200,0,0,0.8)';
-            console.error(e);
+            log('❌ 错误: ' + error.message);
+            console.error(error);
         }
     </script>
 </body>
