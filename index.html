@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>测试 001/002/003.js - 布尔运算</title>
+    <title>布尔运算测试 - 001/002/003</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial; }
         #info {
             position: absolute; top: 20px; left: 20px;
             background: rgba(0,0,0,0.7); color: white;
             padding: 10px 20px; border-radius: 5px;
-            pointer-events: none; z-index: 10; max-width: 90%;
+            pointer-events: none; z-index: 10;
         }
     </style>
 </head>
 <body>
     <div id="info">正在加载...</div>
 
-    <!-- 导入映射：指向本地三个文件 -->
     <script type="importmap">
     {
         "imports": {
@@ -33,65 +32,49 @@
         import { MeshBVH } from 'three-mesh-bvh';
         import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 
-        const infoDiv = document.getElementById('info');
+        const info = document.getElementById('info');
 
         try {
-            // 基本检查
-            if (!THREE || !MeshBVH || !Brush || !Evaluator) {
-                throw new Error('模块导入失败，请检查 001/002/003.js 文件');
-            }
+            info.textContent = 'Three.js ' + THREE.REVISION + ' | 构建 BVH...';
 
-            infoDiv.textContent = 'Three.js ' + THREE.REVISION + ' | 构建 BVH...';
-
-            // 场景初始化
+            // 场景
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-            const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+            scene.background = new THREE.Color(0x111122);
+            const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
             camera.position.set(3, 2, 5);
             camera.lookAt(0, 0, 0);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(innerWidth, innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // 准备几何体：立方体 + 球体
+            // 几何体
             const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
             const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
 
-            // 为两个几何体构建 BVH（加速结构）
+            // 构建 BVH
             boxGeo.boundsTree = new MeshBVH(boxGeo);
             sphereGeo.boundsTree = new MeshBVH(sphereGeo);
 
-            // 创建 Brush（画笔）
+            // 创建 Brush
             const boxBrush = new Brush(boxGeo);
             const sphereBrush = new Brush(sphereGeo);
-            // 移动球体，使减法效果更明显
             sphereBrush.position.set(0.7, 0.7, 0.7);
-            // ★ 关键：更新世界矩阵，否则布尔运算位置错误
-            sphereBrush.updateMatrixWorld();
+            sphereBrush.updateMatrixWorld(); // 必须调用！
 
-            infoDiv.textContent = '正在执行减法（立方体 - 球体）...';
-
-            // 执行布尔减法
+            // 执行减法
             const evaluator = new Evaluator();
             const result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
-
-            if (!result) {
-                throw new Error('布尔运算返回空结果');
-            }
-
-            // 添加结果到场景
+            if (!result) throw new Error('减法返回空');
             scene.add(result);
 
-            // 光照
+            // 光照与辅助
             scene.add(new THREE.AmbientLight(0x404040, 0.6));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(1, 2, 1);
-            scene.add(dirLight);
-            // 辅助网格
-            const grid = new THREE.GridHelper(4, 20, 0x888888, 0x444444);
-            scene.add(grid);
+            const dir = new THREE.DirectionalLight(0xffffff, 1);
+            dir.position.set(1, 2, 1);
+            scene.add(dir);
+            scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
-            // 动画：旋转结果
+            // 旋转
             function animate() {
                 requestAnimationFrame(animate);
                 result.rotation.y += 0.005;
@@ -99,20 +82,17 @@
             }
             animate();
 
-            // 窗口大小自适应
             window.addEventListener('resize', () => {
-                camera.aspect = innerWidth / innerHeight;
+                camera.aspect = innerWidth/innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(innerWidth, innerHeight);
             });
 
-            infoDiv.textContent = '✅ 测试成功！立方体 - 球体 (Three.js ' + THREE.REVISION + ')';
-            console.log('✅ 001/002/003.js 测试通过');
-
-        } catch (error) {
-            infoDiv.textContent = '❌ 测试失败: ' + error.message;
-            infoDiv.style.background = 'rgba(200,0,0,0.8)';
-            console.error(error);
+            info.textContent = '✅ 布尔运算成功！立方体 - 球体 (Three.js ' + THREE.REVISION + ')';
+        } catch (e) {
+            info.textContent = '❌ 错误: ' + e.message;
+            info.style.background = 'rgba(200,0,0,0.8)';
+            console.error(e);
         }
     </script>
 </body>
