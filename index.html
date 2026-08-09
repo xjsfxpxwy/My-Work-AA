@@ -2,109 +2,48 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>诊断加载问题</title>
+    <title>003.js 纯导入测试</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial; background: #111; color: white; }
-        #log {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 5px;
-            max-width: 90%; white-space: pre-wrap; font-size: 14px;
-        }
+        body { background: #111; color: white; font-family: monospace; padding: 20px; }
     </style>
 </head>
 <body>
-    <div id="log">🔄 开始加载...</div>
+    <h1>003.js 加载测试</h1>
+    <pre id="log"></pre>
 
-    <!-- 如果网络无法访问 jsdelivr，可尝试 unpkg 或 esm.sh -->
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.4/build/index.module.js",
-            "three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.1.0/src/index.js"
+            "three": "./001.js",
+            "three-mesh-bvh": "./002.js",
+            "three-bvh-csg": "./003.js"
         }
     }
     </script>
 
     <script type="module">
-        const logDiv = document.getElementById('log');
-        function log(msg) {
-            logDiv.textContent += '\n' + msg;
+        const log = document.getElementById('log');
+        function addLine(msg) {
+            log.textContent += msg + '\n';
             console.log(msg);
         }
 
-        // 超时保护
-        const timeout = setTimeout(() => {
-            log('⏰ 超时（5秒）——可能模块加载卡住，查看控制台网络/错误');
-        }, 5000);
+        addLine('开始导入...');
 
         try {
-            log('1️⃣ 导入 Three.js...');
-            const three = await import('three');
-            log('✅ Three.js 版本: ' + three.REVISION);
-            window.THREE = three;
-
-            log('2️⃣ 导入 three-mesh-bvh...');
-            const bvh = await import('three-mesh-bvh');
-            log('✅ BVH 导入成功，MeshBVH: ' + typeof bvh.MeshBVH);
-
-            log('3️⃣ 导入 three-bvh-csg...');
-            const csg = await import('three-bvh-csg');
-            log('✅ CSG 导入成功，CSG.subtract: ' + typeof csg.CSG.subtract);
-
-            // 简单场景测试
-            log('4️⃣ 创建场景...');
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111122);
-            const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-            camera.position.z = 5;
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(innerWidth, innerHeight);
-            document.body.appendChild(renderer.domElement);
-            log('✅ WebGL 渲染器已创建');
-
-            const boxGeo = new THREE.BoxGeometry(1.5,1.5,1.5);
-            const sphereGeo = new THREE.SphereGeometry(0.9,32,32);
-            const sphereMesh = new THREE.Mesh(sphereGeo);
-            sphereMesh.position.set(0.7,0.7,0.7);
-
-            log('5️⃣ 构建 BVH...');
-            boxGeo.boundsTree = new bvh.MeshBVH(boxGeo);
-            sphereGeo.boundsTree = new bvh.MeshBVH(sphereGeo);
-            log('✅ BVH 构建完成');
-
-            log('6️⃣ 执行布尔减法...');
-            const result = csg.CSG.subtract(new THREE.Mesh(boxGeo), sphereMesh);
-            if (!result) throw new Error('减法返回空');
-            scene.add(result.isMesh ? result : (result.mesh || result));
-            log('✅ 减法成功');
-
-            scene.add(new THREE.AmbientLight(0x404040,0.6));
-            const dir = new THREE.DirectionalLight(0xffffff,1);
-            dir.position.set(1,2,1);
-            scene.add(dir);
-
-            const obj = scene.children.find(c => c.isMesh);
-            function animate() {
-                requestAnimationFrame(animate);
-                if (obj) obj.rotation.y += 0.005;
-                renderer.render(scene, camera);
+            const csgModule = await import('three-bvh-csg');
+            addLine('✅ 导入成功');
+            addLine('模块导出: ' + Object.keys(csgModule).join(', '));
+            addLine('CSG 类型: ' + typeof csgModule.CSG);
+            if (csgModule.CSG) {
+                addLine('CSG.subtract: ' + typeof csgModule.CSG.subtract);
+                addLine('CSG.union: ' + typeof csgModule.CSG.union);
+            } else {
+                addLine('❌ CSG 未导出');
             }
-            animate();
-            window.addEventListener('resize', () => {
-                camera.aspect = innerWidth/innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-            });
-
-            clearTimeout(timeout);
-            log('🎉 全部成功！');
-
-        } catch (error) {
-            clearTimeout(timeout);
-            log('❌ 错误: ' + error.message);
-            console.error(error);
+        } catch (e) {
+            addLine('❌ 导入失败: ' + e.message);
+            console.error(e);
         }
     </script>
 </body>
