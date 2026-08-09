@@ -1,4 +1,4 @@
-import { BufferAttribute, Vector3, Vector2, Plane, Line3, Triangle, Sphere, Matrix4, Box3, REVISION, BackSide, DoubleSide, FrontSide, Object3D, Mesh, BufferGeometry, Group, LineBasicMaterial, MeshBasicMaterial, Ray, BatchedMesh, RGBAFormat, RGFormat, RedFormat, RGBAIntegerFormat, RGIntegerFormat, RedIntegerFormat, DataTexture, NearestFilter, IntType, UnsignedIntType, FloatType, UnsignedByteType, UnsignedShortType, ByteType, ShortType, Vector4, Matrix3 } from 'three';
+import { BufferAttribute, Vector3, Vector2, Plane, Line3, Triangle, Sphere, Matrix4, Box3, BackSide, DoubleSide, FrontSide, Object3D, BufferGeometry, Group, LineBasicMaterial, MeshBasicMaterial, Ray, Mesh, RGBAFormat, RGFormat, RedFormat, RGBAIntegerFormat, RGIntegerFormat, RedIntegerFormat, DataTexture, NearestFilter, IntType, UnsignedIntType, FloatType, UnsignedByteType, UnsignedShortType, ByteType, ShortType, Vector4, Matrix3 } from 'three';
 
 // Split strategy constants
 const CENTER = 0;
@@ -85,10 +85,10 @@ function ensureIndex( geo, options ) {
 //                      g1 = [16, 40]           g2 = [41, 60]
 //
 // we would need four BVH roots: [0, 15], [16, 20], [21, 40], [41, 60].
-function getFullGeometryRange( geo, range ) {
+function getFullGeometryRange( geo ) {
 
 	const triCount = getTriCount( geo );
-	const drawRange = range ? range : geo.drawRange;
+	const drawRange = geo.drawRange;
 	const start = drawRange.start / 3;
 	const end = ( drawRange.start + drawRange.count ) / 3;
 
@@ -101,18 +101,18 @@ function getFullGeometryRange( geo, range ) {
 
 }
 
-function getRootIndexRanges( geo, range ) {
+function getRootIndexRanges( geo ) {
 
 	if ( ! geo.groups || ! geo.groups.length ) {
 
-		return getFullGeometryRange( geo, range );
+		return getFullGeometryRange( geo );
 
 	}
 
 	const ranges = [];
 	const rangeBoundaries = new Set();
 
-	const drawRange = range ? range : geo.drawRange;
+	const drawRange = geo.drawRange;
 	const drawRangeStart = drawRange.start / 3;
 	const drawRangeEnd = ( drawRange.start + drawRange.count ) / 3;
 	for ( const group of geo.groups ) {
@@ -143,10 +143,16 @@ function getRootIndexRanges( geo, range ) {
 
 }
 
-function hasGroupGaps( geometry, range ) {
+function hasGroupGaps( geometry ) {
+
+	if ( geometry.groups.length === 0 ) {
+
+		return false;
+
+	}
 
 	const vertexCount = getTriCount( geometry );
-	const groups = getRootIndexRanges( geometry, range )
+	const groups = getRootIndexRanges( geometry )
 		.sort( ( a, b ) => a.offset - b.offset );
 
 	const finalGroup = groups[ groups.length - 1 ];
@@ -1169,10 +1175,10 @@ function buildPackedTree( bvh, options ) {
 
 		bvh._indirectBuffer = generateIndirectBuffer( geometry, options.useSharedArrayBuffer );
 
-		if ( hasGroupGaps( geometry, options.range ) && ! options.verbose ) {
+		if ( hasGroupGaps( geometry ) && ! options.verbose ) {
 
 			console.warn(
-				'MeshBVH: Provided geometry contains groups or a range that do not fully span the vertex contents while using the "indirect" option. ' +
+				'MeshBVH: Provided geometry contains groups that do not fully span the vertex contents while using the "indirect" option. ' +
 				'BVH may incorrectly report intersections on unrendered portions of the geometry.'
 			);
 
@@ -1189,7 +1195,7 @@ function buildPackedTree( bvh, options ) {
 	const BufferConstructor = options.useSharedArrayBuffer ? SharedArrayBuffer : ArrayBuffer;
 
 	const triangleBounds = computeTriangleBounds( geometry );
-	const geometryRanges = options.indirect ? getFullGeometryRange( geometry, options.range ) : getRootIndexRanges( geometry, options.range );
+	const geometryRanges = options.indirect ? getFullGeometryRange( geometry ) : getRootIndexRanges( geometry );
 	bvh._roots = geometryRanges.map( range => {
 
 		const root = buildTree( bvh, triangleBounds, range.offset, range.count, options );
@@ -2833,8 +2839,6 @@ function closestPointToPoint(
 
 }
 
-const IS_GT_REVISION_169 = parseInt( REVISION ) >= 169;
-
 // Ripped and modified From THREE.js Mesh raycast
 // https://github.com/mrdoob/three.js/blob/0aa87c999fe61e216c1133fba7a95772b503eddf/src/objects/Mesh.js#L115
 const _vA = /* @__PURE__ */ new Vector3();
@@ -2850,7 +2854,7 @@ const _normalB = /* @__PURE__ */ new Vector3();
 const _normalC = /* @__PURE__ */ new Vector3();
 
 const _intersectionPoint = /* @__PURE__ */ new Vector3();
-function checkIntersection( ray, pA, pB, pC, point, side, near, far ) {
+function checkIntersection( ray, pA, pB, pC, point, side ) {
 
 	let intersect;
 	if ( side === BackSide ) {
@@ -2867,8 +2871,6 @@ function checkIntersection( ray, pA, pB, pC, point, side, near, far ) {
 
 	const distance = ray.origin.distanceTo( point );
 
-	if ( distance < near || distance > far ) return null;
-
 	return {
 
 		distance: distance,
@@ -2878,18 +2880,15 @@ function checkIntersection( ray, pA, pB, pC, point, side, near, far ) {
 
 }
 
-function checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, c, side, near, far ) {
+function checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, c, side ) {
 
 	_vA.fromBufferAttribute( position, a );
 	_vB.fromBufferAttribute( position, b );
 	_vC.fromBufferAttribute( position, c );
 
-	const intersection = checkIntersection( ray, _vA, _vB, _vC, _intersectionPoint, side, near, far );
+	const intersection = checkIntersection( ray, _vA, _vB, _vC, _intersectionPoint, side );
 
 	if ( intersection ) {
-
-		const barycoord = new Vector3();
-		Triangle.getBarycoord( _intersectionPoint, _vA, _vB, _vC, barycoord );
 
 		if ( uv ) {
 
@@ -2939,12 +2938,6 @@ function checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, 
 		intersection.face = face;
 		intersection.faceIndex = a;
 
-		if ( IS_GT_REVISION_169 ) {
-
-			intersection.barycoord = barycoord;
-
-		}
-
 	}
 
 	return intersection;
@@ -2952,7 +2945,7 @@ function checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, 
 }
 
 // https://github.com/mrdoob/three.js/blob/0aa87c999fe61e216c1133fba7a95772b503eddf/src/objects/Mesh.js#L258
-function intersectTri( geo, side, ray, tri, intersections, near, far ) {
+function intersectTri( geo, side, ray, tri, intersections ) {
 
 	const triOffset = tri * 3;
 	let a = triOffset + 0;
@@ -2969,7 +2962,7 @@ function intersectTri( geo, side, ray, tri, intersections, near, far ) {
 	}
 
 	const { position, normal, uv, uv1 } = geo.attributes;
-	const intersection = checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, c, side, near, far );
+	const intersection = checkBufferGeometryIntersection( ray, position, normal, uv, uv1, a, b, c, side );
 
 	if ( intersection ) {
 
@@ -3053,10 +3046,6 @@ function getTriangleHitPointInfo( point, geometry, triangleIndex, target ) {
 
 	}
 
-	// extract barycoord
-	const barycoord = target && target.barycoord ? target.barycoord : new Vector3();
-	Triangle.getBarycoord( point, tempV1, tempV2, tempV3, barycoord );
-
 	// extract uvs
 	let uv = null;
 	if ( uvs ) {
@@ -3084,7 +3073,6 @@ function getTriangleHitPointInfo( point, geometry, triangleIndex, target ) {
 		Triangle.getNormal( tempV1, tempV2, tempV3, target.face.normal );
 
 		if ( uv ) target.uv = uv;
-		target.barycoord = barycoord;
 
 		return target;
 
@@ -3098,8 +3086,7 @@ function getTriangleHitPointInfo( point, geometry, triangleIndex, target ) {
 				materialIndex: materialIndex,
 				normal: Triangle.getNormal( tempV1, tempV2, tempV3, new Vector3() )
 			},
-			uv: uv,
-			barycoord: barycoord,
+			uv: uv
 		};
 
 	}
@@ -3111,20 +3098,20 @@ function getTriangleHitPointInfo( point, geometry, triangleIndex, target ) {
 /*************************************************************/
 /* eslint-disable indent */
 
-function intersectTris( bvh, side, ray, offset, count, intersections, near, far ) {
+function intersectTris( bvh, side, ray, offset, count, intersections ) {
 
 	const { geometry, _indirectBuffer } = bvh;
 	for ( let i = offset, end = offset + count; i < end; i ++ ) {
 
 
-		intersectTri( geometry, side, ray, i, intersections, near, far );
+		intersectTri( geometry, side, ray, i, intersections );
 
 
 	}
 
 }
 
-function intersectClosestTri( bvh, side, ray, offset, count, near, far ) {
+function intersectClosestTri( bvh, side, ray, offset, count ) {
 
 	const { geometry, _indirectBuffer } = bvh;
 	let dist = Infinity;
@@ -3133,7 +3120,7 @@ function intersectClosestTri( bvh, side, ray, offset, count, near, far ) {
 
 		let intersection;
 
-		intersection = intersectTri( geometry, side, ray, i, null, near, far );
+		intersection = intersectTri( geometry, side, ray, i );
 
 
 		if ( intersection && intersection.distance < dist ) {
@@ -3356,7 +3343,7 @@ function refit( bvh, nodeIndices = null ) {
  * This function performs intersection tests similar to Ray.intersectBox in three.js,
  * with the difference that the box values are read from an array to improve performance.
  */
-function intersectRay( nodeIndex32, array, ray, near, far ) {
+function intersectRay( nodeIndex32, array, ray ) {
 
 	let tmin, tmax, tymin, tymax, tzmin, tzmax;
 
@@ -3421,13 +3408,15 @@ function intersectRay( nodeIndex32, array, ray, near, far ) {
 
 	if ( ( tmin > tzmax ) || ( tzmin > tmax ) ) return false;
 
-	if ( tzmin > tmin || tmin !== tmin ) tmin = tzmin;
+	// if ( tzmin > tmin || tmin !== tmin ) tmin = tzmin; // Uncomment this line if add the distance check
 
 	if ( tzmax < tmax || tmax !== tmax ) tmax = tzmax;
 
 	//return point closest to the ray (positive side)
 
-	return tmin <= far && tmax >= near;
+	if ( tmax < 0 ) return false;
+
+	return true;
 
 }
 
@@ -3436,20 +3425,20 @@ function intersectRay( nodeIndex32, array, ray, near, far ) {
 /*************************************************************/
 /* eslint-disable indent */
 
-function intersectTris_indirect( bvh, side, ray, offset, count, intersections, near, far ) {
+function intersectTris_indirect( bvh, side, ray, offset, count, intersections ) {
 
 	const { geometry, _indirectBuffer } = bvh;
 	for ( let i = offset, end = offset + count; i < end; i ++ ) {
 
 		let vi = _indirectBuffer ? _indirectBuffer[ i ] : i;
-		intersectTri( geometry, side, ray, vi, intersections, near, far );
+		intersectTri( geometry, side, ray, vi, intersections );
 
 
 	}
 
 }
 
-function intersectClosestTri_indirect( bvh, side, ray, offset, count, near, far ) {
+function intersectClosestTri_indirect( bvh, side, ray, offset, count ) {
 
 	const { geometry, _indirectBuffer } = bvh;
 	let dist = Infinity;
@@ -3457,7 +3446,7 @@ function intersectClosestTri_indirect( bvh, side, ray, offset, count, near, far 
 	for ( let i = offset, end = offset + count; i < end; i ++ ) {
 
 		let intersection;
-		intersection = intersectTri( geometry, side, ray, _indirectBuffer ? _indirectBuffer[ i ] : i, null, near, far );
+		intersection = intersectTri( geometry, side, ray, _indirectBuffer ? _indirectBuffer[ i ] : i );
 
 
 		if ( intersection && intersection.distance < dist ) {
@@ -3510,15 +3499,15 @@ function iterateOverTriangles_indirect(
 /* This file is generated from "raycast.template.js". */
 /******************************************************/
 
-function raycast( bvh, root, side, ray, intersects, near, far ) {
+function raycast( bvh, root, side, ray, intersects ) {
 
 	BufferStack.setBuffer( bvh._roots[ root ] );
-	_raycast$1( 0, bvh, side, ray, intersects, near, far );
+	_raycast$1( 0, bvh, side, ray, intersects );
 	BufferStack.clearBuffer();
 
 }
 
-function _raycast$1( nodeIndex32, bvh, side, ray, intersects, near, far ) {
+function _raycast$1( nodeIndex32, bvh, side, ray, intersects ) {
 
 	const { float32Array, uint16Array, uint32Array } = BufferStack;
 	const nodeIndex16 = nodeIndex32 * 2;
@@ -3529,22 +3518,22 @@ function _raycast$1( nodeIndex32, bvh, side, ray, intersects, near, far ) {
 		const count = COUNT( nodeIndex16, uint16Array );
 
 
-		intersectTris( bvh, side, ray, offset, count, intersects, near, far );
+		intersectTris( bvh, side, ray, offset, count, intersects );
 
 
 	} else {
 
 		const leftIndex = LEFT_NODE( nodeIndex32 );
-		if ( intersectRay( leftIndex, float32Array, ray, near, far ) ) {
+		if ( intersectRay( leftIndex, float32Array, ray ) ) {
 
-			_raycast$1( leftIndex, bvh, side, ray, intersects, near, far );
+			_raycast$1( leftIndex, bvh, side, ray, intersects );
 
 		}
 
 		const rightIndex = RIGHT_NODE( nodeIndex32, uint32Array );
-		if ( intersectRay( rightIndex, float32Array, ray, near, far ) ) {
+		if ( intersectRay( rightIndex, float32Array, ray ) ) {
 
-			_raycast$1( rightIndex, bvh, side, ray, intersects, near, far );
+			_raycast$1( rightIndex, bvh, side, ray, intersects );
 
 		}
 
@@ -3558,17 +3547,17 @@ function _raycast$1( nodeIndex32, bvh, side, ray, intersects, near, far ) {
 
 const _xyzFields$1 = [ 'x', 'y', 'z' ];
 
-function raycastFirst( bvh, root, side, ray, near, far ) {
+function raycastFirst( bvh, root, side, ray ) {
 
 	BufferStack.setBuffer( bvh._roots[ root ] );
-	const result = _raycastFirst$1( 0, bvh, side, ray, near, far );
+	const result = _raycastFirst$1( 0, bvh, side, ray );
 	BufferStack.clearBuffer();
 
 	return result;
 
 }
 
-function _raycastFirst$1( nodeIndex32, bvh, side, ray, near, far ) {
+function _raycastFirst$1( nodeIndex32, bvh, side, ray ) {
 
 	const { float32Array, uint16Array, uint32Array } = BufferStack;
 	let nodeIndex16 = nodeIndex32 * 2;
@@ -3580,8 +3569,7 @@ function _raycastFirst$1( nodeIndex32, bvh, side, ray, near, far ) {
 		const count = COUNT( nodeIndex16, uint16Array );
 
 
-		// eslint-disable-next-line no-unreachable
-		return intersectClosestTri( bvh, side, ray, offset, count, near, far );
+		return intersectClosestTri( bvh, side, ray, offset, count );
 
 
 	} else {
@@ -3607,8 +3595,8 @@ function _raycastFirst$1( nodeIndex32, bvh, side, ray, near, far ) {
 
 		}
 
-		const c1Intersection = intersectRay( c1, float32Array, ray, near, far );
-		const c1Result = c1Intersection ? _raycastFirst$1( c1, bvh, side, ray, near, far ) : null;
+		const c1Intersection = intersectRay( c1, float32Array, ray );
+		const c1Result = c1Intersection ? _raycastFirst$1( c1, bvh, side, ray ) : null;
 
 		// if we got an intersection in the first node and it's closer than the second node's bounding
 		// box, we don't need to consider the second node because it couldn't possibly be a better result
@@ -3631,8 +3619,8 @@ function _raycastFirst$1( nodeIndex32, bvh, side, ray, near, far ) {
 
 		// either there was no intersection in the first node, or there could still be a closer
 		// intersection in the second, so check the second node and then take the better of the two
-		const c2Intersection = intersectRay( c2, float32Array, ray, near, far );
-		const c2Result = c2Intersection ? _raycastFirst$1( c2, bvh, side, ray, near, far ) : null;
+		const c2Intersection = intersectRay( c2, float32Array, ray );
+		const c2Result = c2Intersection ? _raycastFirst$1( c2, bvh, side, ray ) : null;
 
 		if ( c1Result && c2Result ) {
 
@@ -4237,15 +4225,15 @@ function refit_indirect( bvh, nodeIndices = null ) {
 /* This file is generated from "raycast.template.js". */
 /******************************************************/
 
-function raycast_indirect( bvh, root, side, ray, intersects, near, far ) {
+function raycast_indirect( bvh, root, side, ray, intersects ) {
 
 	BufferStack.setBuffer( bvh._roots[ root ] );
-	_raycast( 0, bvh, side, ray, intersects, near, far );
+	_raycast( 0, bvh, side, ray, intersects );
 	BufferStack.clearBuffer();
 
 }
 
-function _raycast( nodeIndex32, bvh, side, ray, intersects, near, far ) {
+function _raycast( nodeIndex32, bvh, side, ray, intersects ) {
 
 	const { float32Array, uint16Array, uint32Array } = BufferStack;
 	const nodeIndex16 = nodeIndex32 * 2;
@@ -4255,22 +4243,22 @@ function _raycast( nodeIndex32, bvh, side, ray, intersects, near, far ) {
 		const offset = OFFSET( nodeIndex32, uint32Array );
 		const count = COUNT( nodeIndex16, uint16Array );
 
-		intersectTris_indirect( bvh, side, ray, offset, count, intersects, near, far );
+		intersectTris_indirect( bvh, side, ray, offset, count, intersects );
 
 
 	} else {
 
 		const leftIndex = LEFT_NODE( nodeIndex32 );
-		if ( intersectRay( leftIndex, float32Array, ray, near, far ) ) {
+		if ( intersectRay( leftIndex, float32Array, ray ) ) {
 
-			_raycast( leftIndex, bvh, side, ray, intersects, near, far );
+			_raycast( leftIndex, bvh, side, ray, intersects );
 
 		}
 
 		const rightIndex = RIGHT_NODE( nodeIndex32, uint32Array );
-		if ( intersectRay( rightIndex, float32Array, ray, near, far ) ) {
+		if ( intersectRay( rightIndex, float32Array, ray ) ) {
 
-			_raycast( rightIndex, bvh, side, ray, intersects, near, far );
+			_raycast( rightIndex, bvh, side, ray, intersects );
 
 		}
 
@@ -4284,17 +4272,17 @@ function _raycast( nodeIndex32, bvh, side, ray, intersects, near, far ) {
 
 const _xyzFields = [ 'x', 'y', 'z' ];
 
-function raycastFirst_indirect( bvh, root, side, ray, near, far ) {
+function raycastFirst_indirect( bvh, root, side, ray ) {
 
 	BufferStack.setBuffer( bvh._roots[ root ] );
-	const result = _raycastFirst( 0, bvh, side, ray, near, far );
+	const result = _raycastFirst( 0, bvh, side, ray );
 	BufferStack.clearBuffer();
 
 	return result;
 
 }
 
-function _raycastFirst( nodeIndex32, bvh, side, ray, near, far ) {
+function _raycastFirst( nodeIndex32, bvh, side, ray ) {
 
 	const { float32Array, uint16Array, uint32Array } = BufferStack;
 	let nodeIndex16 = nodeIndex32 * 2;
@@ -4305,7 +4293,7 @@ function _raycastFirst( nodeIndex32, bvh, side, ray, near, far ) {
 		const offset = OFFSET( nodeIndex32, uint32Array );
 		const count = COUNT( nodeIndex16, uint16Array );
 
-		return intersectClosestTri_indirect( bvh, side, ray, offset, count, near, far );
+		return intersectClosestTri_indirect( bvh, side, ray, offset, count );
 
 
 	} else {
@@ -4331,8 +4319,8 @@ function _raycastFirst( nodeIndex32, bvh, side, ray, near, far ) {
 
 		}
 
-		const c1Intersection = intersectRay( c1, float32Array, ray, near, far );
-		const c1Result = c1Intersection ? _raycastFirst( c1, bvh, side, ray, near, far ) : null;
+		const c1Intersection = intersectRay( c1, float32Array, ray );
+		const c1Result = c1Intersection ? _raycastFirst( c1, bvh, side, ray ) : null;
 
 		// if we got an intersection in the first node and it's closer than the second node's bounding
 		// box, we don't need to consider the second node because it couldn't possibly be a better result
@@ -4355,8 +4343,8 @@ function _raycastFirst( nodeIndex32, bvh, side, ray, near, far ) {
 
 		// either there was no intersection in the first node, or there could still be a closer
 		// intersection in the second, so check the second node and then take the better of the two
-		const c2Intersection = intersectRay( c2, float32Array, ray, near, far );
-		const c2Result = c2Intersection ? _raycastFirst( c2, bvh, side, ray, near, far ) : null;
+		const c2Intersection = intersectRay( c2, float32Array, ray );
+		const c2Result = c2Intersection ? _raycastFirst( c2, bvh, side, ray ) : null;
 
 		if ( c1Result && c2Result ) {
 
@@ -4863,7 +4851,7 @@ function bvhcast( bvh, otherBvh, matrixToLocal, intersectsRanges ) {
 		// iterate over the second set of roots
 		for ( let j = 0, jl = otherRoots.length; j < jl; j ++ ) {
 
-			_bufferStack2.setBuffer( otherRoots[ j ] );
+			_bufferStack2.setBuffer( otherRoots[ i ] );
 
 			result = _traverse(
 				0, 0, matrixToLocal, invMat, intersectsRanges,
@@ -5140,7 +5128,6 @@ const DEFAULT_OPTIONS = {
 	onProgress: null,
 	indirect: false,
 	verbose: true,
-	range: null
 };
 
 class MeshBVH {
@@ -5266,7 +5253,8 @@ class MeshBVH {
 
 		}
 
-		this.resolveTriangleIndex = options.indirect ? i => this._indirectBuffer[ i ] : i => i;
+		const { _indirectBuffer } = this;
+		this.resolveTriangleIndex = options.indirect ? i => _indirectBuffer[ i ] : i => i;
 
 	}
 
@@ -5316,7 +5304,7 @@ class MeshBVH {
 	}
 
 	/* Core Cast Functions */
-	raycast( ray, materialOrSide = FrontSide, near = 0, far = Infinity ) {
+	raycast( ray, materialOrSide = FrontSide ) {
 
 		const roots = this._roots;
 		const geometry = this.geometry;
@@ -5332,7 +5320,7 @@ class MeshBVH {
 			const materialSide = isArrayMaterial ? materialOrSide[ groups[ i ].materialIndex ].side : side;
 			const startCount = intersects.length;
 
-			raycastFunc( this, i, materialSide, ray, intersects, near, far );
+			raycastFunc( this, i, materialSide, ray, intersects );
 
 			if ( isArrayMaterial ) {
 
@@ -5351,7 +5339,7 @@ class MeshBVH {
 
 	}
 
-	raycastFirst( ray, materialOrSide = FrontSide, near = 0, far = Infinity ) {
+	raycastFirst( ray, materialOrSide = FrontSide ) {
 
 		const roots = this._roots;
 		const geometry = this.geometry;
@@ -5366,7 +5354,7 @@ class MeshBVH {
 		for ( let i = 0, l = roots.length; i < l; i ++ ) {
 
 			const materialSide = isArrayMaterial ? materialOrSide[ groups[ i ].materialIndex ].side : side;
-			const result = raycastFirstFunc( this, i, materialSide, ray, near, far );
+			const result = raycastFirstFunc( this, i, materialSide, ray );
 			if ( result != null && ( closestResult == null || result.distance < closestResult.distance ) ) {
 
 				closestResult = result;
@@ -5653,8 +5641,6 @@ class MeshBVH {
 }
 
 const boundingBox = /* @__PURE__ */ new Box3();
-const matrix = /* @__PURE__ */ new Matrix4();
-
 class MeshBVHRootHelper extends Object3D {
 
 	get isMesh() {
@@ -5672,13 +5658,6 @@ class MeshBVHRootHelper extends Object3D {
 	get isLine() {
 
 		return this.displayEdges;
-
-	}
-
-	getVertexPosition( ...args ) {
-
-		// implement this function so it works with Box3.setFromObject
-		return Mesh.prototype.getVertexPosition.call( this, ...args );
 
 	}
 
@@ -5906,7 +5885,6 @@ class MeshBVHHelper extends Group {
 		this.bvh = bvh;
 		this.displayParents = false;
 		this.displayEdges = true;
-		this.objectIndex = 0;
 		this._roots = [];
 
 		const edgeMaterial = new LineBasicMaterial( {
@@ -5934,21 +5912,7 @@ class MeshBVHHelper extends Group {
 
 	update() {
 
-		const mesh = this.mesh;
-		let bvh = this.bvh || mesh.geometry.boundsTree || null;
-		if ( mesh.isBatchedMesh && mesh.boundsTrees && ! bvh ) {
-
-			// get the bvh from a batchedMesh if not provided
-			// TODO: we should have an official way to get the geometry index cleanly
-			const drawInfo = mesh._drawInfo[ this.objectIndex ];
-			if ( drawInfo ) {
-
-				bvh = mesh.boundsTrees[ drawInfo.geometryIndex ] || bvh;
-
-			}
-
-		}
-
+		const bvh = this.bvh || this.mesh.geometry.boundsTree;
 		const totalRoots = bvh ? bvh._roots.length : 0;
 		while ( this._roots.length > totalRoots ) {
 
@@ -6002,14 +5966,6 @@ class MeshBVHHelper extends Group {
 
 				this.matrix
 					.copy( mesh.matrixWorld );
-
-			}
-
-			// handle batched and instanced mesh bvhs
-			if ( mesh.isInstancedMesh || mesh.isBatchedMesh ) {
-
-				mesh.getMatrixAt( this.objectIndex, matrix );
-				this.matrix.multiply( matrix );
 
 			}
 
@@ -6189,7 +6145,7 @@ function estimateMemoryInBytes( obj ) {
 
 		for ( let key in curr ) {
 
-			if ( ! Object.hasOwn( curr, key ) ) {
+			if ( ! curr.hasOwnProperty( key ) ) {
 
 				continue;
 
@@ -6369,110 +6325,23 @@ function convertRaycastIntersect( hit, object, raycaster ) {
 	hit.distance = hit.point.distanceTo( raycaster.ray.origin );
 	hit.object = object;
 
-	return hit;
+	if ( hit.distance < raycaster.near || hit.distance > raycaster.far ) {
+
+		return null;
+
+	} else {
+
+		return hit;
+
+	}
 
 }
 
-const IS_REVISION_166 = parseInt( REVISION ) >= 166;
 const ray = /* @__PURE__ */ new Ray();
-const direction = /* @__PURE__ */ new Vector3();
 const tmpInverseMatrix = /* @__PURE__ */ new Matrix4();
 const origMeshRaycastFunc = Mesh.prototype.raycast;
-const origBatchedRaycastFunc = BatchedMesh.prototype.raycast;
-const _worldScale = /* @__PURE__ */ new Vector3();
-const _mesh = /* @__PURE__ */ new Mesh();
-const _batchIntersects = [];
 
 function acceleratedRaycast( raycaster, intersects ) {
-
-	if ( this.isBatchedMesh ) {
-
-		acceleratedBatchedMeshRaycast.call( this, raycaster, intersects );
-
-	} else {
-
-		acceleratedMeshRaycast.call( this, raycaster, intersects );
-
-	}
-
-}
-
-function acceleratedBatchedMeshRaycast( raycaster, intersects ) {
-
-	if ( this.boundsTrees ) {
-
-		const boundsTrees = this.boundsTrees;
-		const drawInfo = this._drawInfo;
-		const drawRanges = this._drawRanges;
-		const matrixWorld = this.matrixWorld;
-
-		_mesh.material = this.material;
-		_mesh.geometry = this.geometry;
-
-		const oldBoundsTree = _mesh.geometry.boundsTree;
-		const oldDrawRange = _mesh.geometry.drawRange;
-
-		if ( _mesh.geometry.boundingSphere === null ) {
-
-			_mesh.geometry.boundingSphere = new Sphere();
-
-		}
-
-		// TODO: provide new method to get instances count instead of 'drawInfo.length'
-		for ( let i = 0, l = drawInfo.length; i < l; i ++ ) {
-
-			if ( ! this.getVisibleAt( i ) ) {
-
-				continue;
-
-			}
-
-			// TODO: use getGeometryIndex
-			const geometryId = drawInfo[ i ].geometryIndex;
-
-			_mesh.geometry.boundsTree = boundsTrees[ geometryId ];
-
-			this.getMatrixAt( i, _mesh.matrixWorld ).premultiply( matrixWorld );
-
-			if ( ! _mesh.geometry.boundsTree ) {
-
-				this.getBoundingBoxAt( geometryId, _mesh.geometry.boundingBox );
-				this.getBoundingSphereAt( geometryId, _mesh.geometry.boundingSphere );
-
-				const drawRange = drawRanges[ geometryId ];
-				_mesh.geometry.setDrawRange( drawRange.start, drawRange.count );
-
-			}
-
-			_mesh.raycast( raycaster, _batchIntersects );
-
-			for ( let j = 0, l = _batchIntersects.length; j < l; j ++ ) {
-
-				const intersect = _batchIntersects[ j ];
-				intersect.object = this;
-				intersect.batchId = i;
-				intersects.push( intersect );
-
-			}
-
-			_batchIntersects.length = 0;
-
-		}
-
-		_mesh.geometry.boundsTree = oldBoundsTree;
-		_mesh.geometry.drawRange = oldDrawRange;
-		_mesh.material = null;
-		_mesh.geometry = null;
-
-	} else {
-
-		origBatchedRaycastFunc.call( this, raycaster, intersects );
-
-	}
-
-}
-
-function acceleratedMeshRaycast( raycaster, intersects ) {
 
 	if ( this.geometry.boundsTree ) {
 
@@ -6481,17 +6350,10 @@ function acceleratedMeshRaycast( raycaster, intersects ) {
 		tmpInverseMatrix.copy( this.matrixWorld ).invert();
 		ray.copy( raycaster.ray ).applyMatrix4( tmpInverseMatrix );
 
-		_worldScale.setFromMatrixScale( this.matrixWorld );
-		direction.copy( ray.direction ).multiply( _worldScale );
-
-		const scaleFactor = direction.length();
-		const near = raycaster.near / scaleFactor;
-		const far = raycaster.far / scaleFactor;
-
 		const bvh = this.geometry.boundsTree;
 		if ( raycaster.firstHitOnly === true ) {
 
-			const hit = convertRaycastIntersect( bvh.raycastFirst( ray, this.material, near, far ), this, raycaster );
+			const hit = convertRaycastIntersect( bvh.raycastFirst( ray, this.material ), this, raycaster );
 			if ( hit ) {
 
 				intersects.push( hit );
@@ -6500,7 +6362,7 @@ function acceleratedMeshRaycast( raycaster, intersects ) {
 
 		} else {
 
-			const hits = bvh.raycast( ray, this.material, near, far );
+			const hits = bvh.raycast( ray, this.material );
 			for ( let i = 0, l = hits.length; i < l; i ++ ) {
 
 				const hit = convertRaycastIntersect( hits[ i ], this, raycaster );
@@ -6522,7 +6384,7 @@ function acceleratedMeshRaycast( raycaster, intersects ) {
 
 }
 
-function computeBoundsTree( options = {} ) {
+function computeBoundsTree( options ) {
 
 	this.boundsTree = new MeshBVH( this, options );
 	return this.boundsTree;
@@ -6532,85 +6394,6 @@ function computeBoundsTree( options = {} ) {
 function disposeBoundsTree() {
 
 	this.boundsTree = null;
-
-}
-
-function computeBatchedBoundsTree( index = - 1, options = {} ) {
-
-	if ( ! IS_REVISION_166 ) {
-
-		throw new Error( 'BatchedMesh: Three r166+ is required to compute bounds trees.' );
-
-	}
-
-	if ( options.indirect ) {
-
-		console.warn( '"Indirect" is set to false because it is not supported for BatchedMesh.' );
-
-	}
-
-	options = {
-		...options,
-		indirect: false,
-		range: null
-	};
-
-	const drawRanges = this._drawRanges;
-	const geometryCount = this._geometryCount;
-	if ( ! this.boundsTrees ) {
-
-		this.boundsTrees = new Array( geometryCount ).fill( null );
-
-	}
-
-	const boundsTrees = this.boundsTrees;
-	while ( boundsTrees.length < geometryCount ) {
-
-		boundsTrees.push( null );
-
-	}
-
-	if ( index < 0 ) {
-
-		for ( let i = 0; i < geometryCount; i ++ ) {
-
-			options.range = drawRanges[ i ];
-			boundsTrees[ i ] = new MeshBVH( this.geometry, options );
-
-		}
-
-		return boundsTrees;
-
-	} else {
-
-		if ( index < drawRanges.length ) {
-
-			options.range = drawRanges[ index ];
-			boundsTrees[ index ] = new MeshBVH( this.geometry, options );
-
-		}
-
-		return boundsTrees[ index ] || null;
-
-	}
-
-}
-
-function disposeBatchedBoundsTree( index = - 1 ) {
-
-	if ( index < 0 ) {
-
-		this.boundsTrees.fill( null );
-
-	} else {
-
-		if ( index < this.boundsTree.length ) {
-
-			this.boundsTrees[ index ] = null;
-
-		}
-
-	}
 
 }
 
@@ -8368,5 +8151,5 @@ const shaderIntersectFunction = `
 	${ bvh_ray_functions }
 `;
 
-export { AVERAGE, BVHShaderGLSL, CENTER, CONTAINED, ExtendedTriangle, FloatVertexAttributeTexture, INTERSECTED, IntVertexAttributeTexture, MeshBVH, MeshBVHHelper, MeshBVHUniformStruct, NOT_INTERSECTED, OrientedBox, SAH, StaticGeometryGenerator, UIntVertexAttributeTexture, VertexAttributeTexture, acceleratedRaycast, computeBatchedBoundsTree, computeBoundsTree, disposeBatchedBoundsTree, disposeBoundsTree, estimateMemoryInBytes, getBVHExtremes, getJSONStructure, getTriangleHitPointInfo, shaderDistanceFunction, shaderIntersectFunction, shaderStructs, validateBounds };
+export { AVERAGE, BVHShaderGLSL, CENTER, CONTAINED, ExtendedTriangle, FloatVertexAttributeTexture, INTERSECTED, IntVertexAttributeTexture, MeshBVH, MeshBVHHelper, MeshBVHUniformStruct, NOT_INTERSECTED, OrientedBox, SAH, StaticGeometryGenerator, UIntVertexAttributeTexture, VertexAttributeTexture, acceleratedRaycast, computeBoundsTree, disposeBoundsTree, estimateMemoryInBytes, getBVHExtremes, getJSONStructure, getTriangleHitPointInfo, shaderDistanceFunction, shaderIntersectFunction, shaderStructs, validateBounds };
 //# sourceMappingURL=index.module.js.map
