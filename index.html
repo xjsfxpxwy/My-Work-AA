@@ -2,15 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>003.js 纯导入测试</title>
+    <title>测试 003.js (three-bvh-csg)</title>
     <style>
-        body { background: #111; color: white; font-family: monospace; padding: 20px; }
+        body { background: #111; color: #fff; font-family: monospace; padding: 20px; }
+        pre { background: #222; padding: 15px; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h1>003.js 加载测试</h1>
-    <pre id="log"></pre>
+    <h2>003.js 加载测试</h2>
+    <pre id="log">等待导入...</pre>
 
+    <!-- 必须提供三个依赖的映射 -->
     <script type="importmap">
     {
         "imports": {
@@ -23,27 +25,27 @@
 
     <script type="module">
         const log = document.getElementById('log');
-        function addLine(msg) {
+        function add(msg) {
             log.textContent += msg + '\n';
             console.log(msg);
         }
 
-        addLine('开始导入...');
-
+        add('开始测试...');
         try {
+            add('导入 three-bvh-csg...');
             const csgModule = await import('three-bvh-csg');
-            addLine('✅ 导入成功');
-            addLine('模块导出: ' + Object.keys(csgModule).join(', '));
-            addLine('CSG 类型: ' + typeof csgModule.CSG);
+            add('✅ 导入成功！模块导出: ' + Object.keys(csgModule).join(', '));
+
             if (csgModule.CSG) {
-                addLine('CSG.subtract: ' + typeof csgModule.CSG.subtract);
-                addLine('CSG.union: ' + typeof csgModule.CSG.union);
+                add('✅ CSG 对象存在');
+                add('CSG.subtract 类型: ' + typeof csgModule.CSG.subtract);
+                add('CSG.union 类型: ' + typeof csgModule.CSG.union);
             } else {
-                addLine('❌ CSG 未导出');
+                add('❌ CSG 未导出，实际导出: ' + JSON.stringify(csgModule));
             }
-        } catch (e) {
-            addLine('❌ 导入失败: ' + e.message);
-            console.error(e);
+        } catch (err) {
+            add('❌ 错误: ' + err.message);
+            console.error(err);
         }
     </script>
 </body>
