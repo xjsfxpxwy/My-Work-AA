@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>代码浏览器 · 离线 Three.js 全依赖版</title>
+    <title>代码浏览器 · 智能依赖版</title>
     <style>
         * {
             margin: 0;
@@ -23,6 +23,7 @@
             height: 100vh;
             position: relative;
         }
+        /* 预览页 */
         .preview-page {
             position: absolute;
             top: 0;
@@ -110,6 +111,7 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             border-radius: 4px;
         }
+        /* 目录页 */
         .directory-page {
             position: absolute;
             top: 0;
@@ -227,6 +229,7 @@
             margin-bottom: 15px;
             opacity: 0.5;
         }
+        /* 添加文件菜单 */
         .add-file-menu {
             position: absolute;
             top: 70px;
@@ -273,6 +276,7 @@
             color: #4cc9f0;
             font-size: 0.8rem;
         }
+        /* 源代码页 */
         .source-page {
             position: absolute;
             top: 0;
@@ -364,6 +368,7 @@
             border-color: #4cc9f0;
             box-shadow: 0 0 0 2px rgba(76,201,240,0.15);
         }
+        /* Toast */
         .toast {
             position: fixed;
             bottom: 30px;
@@ -472,7 +477,7 @@
 <script>
     (() => {
         // ========== 持久化存储 ==========
-        const STORAGE_KEY = 'code_browser_files_v6_offline';
+        const STORAGE_KEY = 'code_browser_files_v7_smart';
         const saveToStorage = (data) => {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
             catch (e) { showToast('⚠️ 存储空间不足'); }
@@ -662,10 +667,20 @@
             }
         };
 
-        // ========== 核心：预览生成（注入本地依赖库） ==========
+        // ========== 核心：预览生成（智能判断是否注入依赖） ==========
         const updatePreview = () => {
             const htmlFile = files['index.html'] || '';
 
+            // 检查用户 HTML 是否已包含 importmap（即已自管理依赖）
+            const hasCustomImportMap = /<script\s+type=["']importmap["']/i.test(htmlFile);
+
+            // 如果用户已经自己引入了 importmap，就不再注入依赖，也不拼接 CSS/JS，直接原样展示
+            if (hasCustomImportMap) {
+                previewFrame.srcdoc = htmlFile;
+                return;
+            }
+
+            // ----- 原有逻辑：注入本地依赖库，拼接 CSS/JS -----
             // 收集所有 CSS
             const allCssFiles = Object.keys(files)
                 .filter(f => f.endsWith('.css'))
@@ -705,7 +720,7 @@
     }
 }
 <\/script>
-<!-- 全局暴露模块接口，使旧式脚本也能使用 -->
+<!-- 全局暴露模块接口 -->
 <script type="module">
 import * as THREE from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
@@ -738,7 +753,7 @@ window.GUI = GUI;
                         finalHtml = cssBlock + '\n' + finalHtml;
                     }
                 }
-                // 注入依赖库（在 head 或 body 之前）
+                // 注入依赖库
                 if (/<head>/i.test(finalHtml)) {
                     finalHtml = finalHtml.replace(/<head>/i, '<head>\n' + dependencyBlock);
                 } else if (/<html[^>]*>/i.test(finalHtml)) {
