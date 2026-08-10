@@ -333,6 +333,12 @@
         .source-btn.delete:hover {
             background: #f85149;
         }
+        .source-btn.reset {
+            background: #d2991d;
+        }
+        .source-btn.reset:hover {
+            background: #e4a62b;
+        }
         .source-code-container {
             flex: 1;
             padding: 20px;
@@ -454,6 +460,7 @@
         <div class="source-controls">
             <button class="source-btn copy" id="copyCodeBtn">📋 复制代码</button>
             <button class="source-btn" id="pasteCodeBtn">📥 粘贴代码</button>
+            <button class="source-btn reset" id="resetFileBtn">🔄 返回初始</button>
             <button class="source-btn delete" id="deleteFileBtn">🗑️ 删除文件</button>
         </div>
         <div class="source-code-container">
@@ -499,6 +506,7 @@
         const previewFrameWrapper = document.getElementById('previewFrameWrapper');
         const copyCodeBtn = document.getElementById('copyCodeBtn');
         const pasteCodeBtn = document.getElementById('pasteCodeBtn');
+        const resetFileBtn = document.getElementById('resetFileBtn');
         const deleteFileBtn = document.getElementById('deleteFileBtn');
         const deviceOptions = document.querySelectorAll('.device-option');
         const fileTypeOptions = document.querySelectorAll('.file-type-option');
@@ -603,6 +611,22 @@
             updateFileList();
             updateFileTypeStatus();
             updatePreview();
+        };
+
+        const resetCurrentFile = () => {
+            if (!currentFile) {
+                showToast('没有选中文件');
+                return;
+            }
+            if (!files.hasOwnProperty(currentFile)) {
+                showToast('当前文件不存在');
+                return;
+            }
+            files[currentFile] = getDefaultContent(currentFile);
+            sourceCode.value = files[currentFile];
+            persist();
+            updatePreview();
+            showToast(`🔄 已恢复默认: ${currentFile}`);
         };
 
         const updateFileTypeStatus = () => {
@@ -751,7 +775,7 @@ ${userJsScripts || ''}
             previewFrame.srcdoc = finalHtml;
         };
 
-        // ========== 默认内容（更新 script.js 示例） ==========
+        // ========== 默认内容 ==========
         const getDefaultContent = (fileName) => {
             const ext = fileName.split('.').pop().toLowerCase();
             if (ext === 'html') {
@@ -794,7 +818,6 @@ button {
             if (ext === 'js') {
                 if (fileName === 'script.js') {
                     return `// script.js - 3D 布尔运算示例（离线依赖已注入）
-// 依赖：THREE, MeshBVH, Brush, Evaluator, SUBTRACTION, GUI 均已全局可用
 let scene, camera, renderer, resultMesh;
 
 function init() {
@@ -807,26 +830,22 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // 光照
     scene.add(new THREE.AmbientLight(0x404040, 0.6));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.set(1, 2, 1);
     scene.add(dirLight);
     scene.add(new THREE.GridHelper(4, 20, 0x888888, 0x444444));
 
-    // 创建几何体并构建 BVH
     const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
     const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
     boxGeo.boundsTree = new MeshBVH(boxGeo);
     sphereGeo.boundsTree = new MeshBVH(sphereGeo);
 
-    // 创建 Brush
     const boxBrush = new Brush(boxGeo);
     const sphereBrush = new Brush(sphereGeo);
     sphereBrush.position.set(0.7, 0.7, 0.7);
     sphereBrush.updateMatrixWorld();
 
-    // 布尔减法
     const evaluator = new Evaluator();
     resultMesh = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
     if (resultMesh) {
@@ -834,11 +853,10 @@ function init() {
         scene.add(resultMesh);
     }
 
-    // 添加 GUI 面板
     const gui = new GUI({ title: '控制面板', width: 280 });
-    gui.add({ speed: 0.005 }, 'speed', 0, 0.02).name('旋转速度').onChange(v => { rotationSpeed = v; });
-    gui.addColor({ color: 0x4cc9f0 }, 'color').name('颜色').onChange(v => { if (resultMesh) resultMesh.material.color.set(v); });
     let rotationSpeed = 0.005;
+    gui.add({ speed: rotationSpeed }, 'speed', 0, 0.02).name('旋转速度').onChange(v => { rotationSpeed = v; });
+    gui.addColor({ color: 0x4cc9f0 }, 'color').name('颜色').onChange(v => { if (resultMesh) resultMesh.material.color.set(v); });
 
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -893,6 +911,7 @@ window.addEventListener('DOMContentLoaded', init);
 
         copyCodeBtn.addEventListener('click', copyCode);
         pasteCodeBtn.addEventListener('click', pasteCode);
+        resetFileBtn.addEventListener('click', resetCurrentFile);
         deleteFileBtn.addEventListener('click', () => {
             if (!currentFile) return showToast('没有选中文件');
             if (confirm(`确定删除 ${currentFile} ？`)) {
