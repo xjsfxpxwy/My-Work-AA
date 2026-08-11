@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>代码浏览器 · 智能依赖版（支持 005.js）</title>
+    <title>代码浏览器 · 智能依赖版（支持 005.js + 通配符映射）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
         body { background-color: #0d1117; color: #e6e6e6; height: 100vh; overflow: hidden; }
@@ -326,7 +326,7 @@
             const htmlFile = files['index.html'] || '';
             const hasCustomImportMap = /<script\s+type=["']importmap["']/i.test(htmlFile);
 
-            // 依赖块（包含 001~005 全部映射）
+            // 依赖块（包含 001~005 映射 + 通配符 three/addons/）
             const dependencyBlock = `
 <script type="importmap">
 {
@@ -335,7 +335,8 @@
         "three-mesh-bvh": "./002.js",
         "three-bvh-csg": "./003.js",
         "lil-gui": "./004.js",
-        "three/addons/controls/OrbitControls.js": "./005.js"
+        "three/addons/controls/OrbitControls.js": "./005.js",
+        "three/addons/": "./"
     }
 }
 <\/script>
