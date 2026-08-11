@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>代码浏览器 · 智能依赖版（增强错误捕获）</title>
+    <title>代码浏览器 · 智能依赖版（支持 005.js）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
         body { background-color: #0d1117; color: #e6e6e6; height: 100vh; overflow: hidden; }
@@ -137,7 +137,7 @@
 
 <script>
     (() => {
-        const STORAGE_KEY = 'code_browser_files_v10';
+        const STORAGE_KEY = 'code_browser_files_v11_005';
         const saveToStorage = (data) => {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
             catch (e) { showToast('⚠️ 存储空间不足'); }
@@ -328,7 +328,6 @@
 
             if (hasCustomImportMap) {
                 let finalHtml = htmlFile;
-                // 若缺少 base 标签，自动插入以保证相对路径正常
                 if (!/<base\s/i.test(finalHtml)) {
                     finalHtml = finalHtml.replace(/<head>/i, `<head>\n<base href="${getBaseUrl()}">`);
                 }
@@ -366,7 +365,7 @@
                 return isModule ? `<script type="module">\n${code}\n<\/script>` : `<script>\n${code}\n<\/script>`;
             }).join('\n');
 
-            // 本地依赖库映射与全局桥接
+            // 本地依赖库映射（新增 005.js 为 OrbitControls）
             const dependencyBlock = `
 <script type="importmap">
 {
@@ -375,7 +374,7 @@
         "three-mesh-bvh": "./002.js",
         "three-bvh-csg": "./003.js",
         "lil-gui": "./004.js",
-        "three/addons/": "./addons/"
+        "three/addons/controls/OrbitControls.js": "./005.js"
     }
 }
 <\/script>
@@ -395,19 +394,16 @@ window.REVERSE_SUBTRACTION = REVERSE_SUBTRACTION;
 window.GUI = GUI;
 <\/script>`;
 
-            // 增强的错误报告：捕获模块加载失败
+            // 增强的错误报告
             const errorReporter = `
 <script>
 (function() {
-    // 捕获普通脚本错误
     window.onerror = function(msg, url, line, col, error) {
         showError('❌ ' + msg + ' (行 ' + line + ')');
     };
-    // 捕获未处理的 Promise 错误
     window.addEventListener('unhandledrejection', function(e) {
         showError('❌ Promise 错误: ' + e.reason);
     });
-    // 捕获模块脚本加载失败（网络错误等）
     window.addEventListener('error', function(e) {
         if (e.target && e.target.tagName === 'SCRIPT' && e.target.type === 'module') {
             showError('❌ 模块加载失败: ' + (e.target.src || '未知文件'));
@@ -520,6 +516,7 @@ button {
             if (ext === 'js') {
                 if (fileName === 'script.js') {
                     return `// 离线依赖已全局可用: THREE, MeshBVH, Brush, Evaluator, SUBTRACTION 等
+// 亦可使用模块导入: import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 let scene, camera, renderer, resultMesh;
 function init() {
     scene = new THREE.Scene();
