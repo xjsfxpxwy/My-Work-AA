@@ -1,608 +1,525 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>代码浏览器 · 完整后处理版</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>依赖诊断测试：001-006.js (含 EffectComposer)</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
-        body { background-color: #0d1117; color: #e6e6e6; height: 100vh; overflow: hidden; }
-        .app-container { display: flex; flex-direction: column; height: 100vh; position: relative; }
-        .preview-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; background: #1a1a2e; }
-        .preview-header { position: absolute; top: 0; right: 0; padding: 15px; display: flex; gap: 10px; z-index: 20; }
-        .preview-btn { background: rgba(22,33,62,0.9); border: 1px solid #0f3460; color: #4cc9f0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: all 0.2s; user-select: none; }
-        .preview-btn:hover { background: #0f3460; transform: scale(1.05); }
-        .device-menu { position: absolute; top: 60px; right: 15px; background: #16213e; border-radius: 8px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 30; display: none; flex-direction: column; gap: 5px; min-width: 150px; }
-        .device-menu.show { display: flex; }
-        .device-option { padding: 10px 15px; border-radius: 4px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-        .device-option:hover { background: #0f3460; }
-        .device-option.active { background: #4cc9f0; color: #16213e; font-weight: bold; }
-        .preview-frame-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; transition: all 0.3s; }
-        .preview-frame { border: none; background: white; transition: all 0.3s; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border-radius: 4px; }
-        .directory-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0d1117; z-index: 20; display: none; flex-direction: column; }
-        .directory-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #16213e; border-bottom: 1px solid #0f3460; gap: 12px; flex-wrap: wrap; }
-        .new-file-btn { background: #0f3460; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
-        .new-file-btn:hover { background: #1a5a9c; }
-        .add-file-btn { background: #4cc9f0; color: #16213e; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; font-weight: bold; transition: 0.2s; user-select: none; flex-shrink: 0; }
-        .add-file-btn:hover { background: #72d4f3; transform: scale(1.05); }
-        .back-btn { background: transparent; color: #4cc9f0; border: 1px solid #0f3460; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; white-space: nowrap; }
-        .back-btn:hover { background: #0f3460; }
-        .file-list { flex: 1; padding: 20px; overflow-y: auto; }
-        .file-item { padding: 15px; margin-bottom: 10px; background: #161b22; border-radius: 8px; border-left: 4px solid #4cc9f0; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
-        .file-item:hover { background: #1a2332; transform: translateX(5px); }
-        .file-item-icon { font-size: 24px; flex-shrink: 0; }
-        .file-name { font-weight: bold; color: #4cc9f0; margin-bottom: 3px; word-break: break-all; }
-        .file-path { font-size: 0.85rem; color: #8b949e; }
-        .empty-directory { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6c757d; text-align: center; }
-        .empty-icon { font-size: 48px; margin-bottom: 15px; opacity: 0.5; }
-        .add-file-menu { position: absolute; top: 70px; right: 20px; background: #16213e; border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 30; display: none; flex-direction: column; gap: 5px; min-width: 250px; max-height: 400px; overflow-y: auto; }
-        .add-file-menu.show { display: flex; }
-        .file-type-section { margin-bottom: 15px; }
-        .file-type-title { color: #4cc9f0; font-size: 0.9rem; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #0f3460; font-weight: bold; }
-        .file-type-option { padding: 10px 15px; border-radius: 4px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .file-type-option:hover { background: #0f3460; }
-        .file-added { color: #4cc9f0; font-size: 0.8rem; }
-        .source-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0d1117; z-index: 30; display: none; flex-direction: column; }
-        .source-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #16213e; border-bottom: 1px solid #0f3460; gap: 12px; }
-        .source-title { color: #4cc9f0; font-size: 1.2rem; font-weight: bold; word-break: break-all; }
-        .source-controls { display: flex; gap: 10px; padding: 12px 20px; background: #0d1117; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
-        .source-btn { padding: 8px 15px; background: #0f3460; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; white-space: nowrap; }
-        .source-btn:hover { background: #1a5a9c; }
-        .source-btn.copy { background: #238636; }
-        .source-btn.copy:hover { background: #2ea043; }
-        .source-btn.delete { background: #da3633; }
-        .source-btn.delete:hover { background: #f85149; }
-        .source-btn.reset { background: #d2991d; }
-        .source-btn.reset:hover { background: #e4a62b; }
-        .source-code-container { flex: 1; padding: 20px; overflow: hidden; display: flex; }
-        #sourceCode { width: 100%; height: 100%; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 8px; padding: 15px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.5; resize: none; outline: none; tab-size: 2; }
-        #sourceCode:focus { border-color: #4cc9f0; box-shadow: 0 0 0 2px rgba(76,201,240,0.15); }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #238636; color: white; padding: 12px 24px; border-radius: 8px; z-index: 999; font-weight: 600; animation: fadeInUp 0.3s ease, fadeOut 0.3s ease 1.5s forwards; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-        @media (max-width: 768px) { .preview-header { padding: 8px; } .preview-btn { width: 35px; height: 35px; font-size: 16px; } .device-menu { top: 50px; right: 8px; } .preview-frame-wrapper { padding: 10px; } }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d0d1a;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 10;
+            font-size: 14px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            max-width: 70%;
+            pointer-events: none;
+        }
+        #info .badge {
+            display: inline-block;
+            background: #2ecc71;
+            color: #fff;
+            border-radius: 12px;
+            padding: 0 10px;
+            font-size: 12px;
+            line-height: 22px;
+            margin-left: 8px;
+            font-weight: 600;
+        }
+        #info .badge.error {
+            background: #e74c3c;
+        }
+        #status-dots {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 14px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .dot.loaded {
+            background: #2ecc71;
+            box-shadow: 0 0 12px rgba(46, 204, 113, 0.5);
+        }
+        .dot.pending {
+            background: #f39c12;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .dot.error {
+            background: #e74c3c;
+            box-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+            animation: none;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        #gui-tip {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 13px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px 18px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        #error-console {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            right: 20px;
+            max-width: 600px;
+            background: rgba(200, 0, 0, 0.85);
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+            pointer-events: none;
+        }
+        #error-console.visible {
+            display: block;
+        }
+        @media (max-width: 640px) {
+            #info { font-size: 12px; padding: 8px 14px; top: 12px; left: 12px; }
+            #status-dots { top: 12px; right: 12px; padding: 6px 10px; }
+            .dot { width: 10px; height: 10px; }
+            #gui-tip { font-size: 11px; padding: 4px 12px; bottom: 16px; }
+        }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="preview-page" id="previewPage">
-        <div class="preview-header">
-            <div class="preview-btn" id="deviceBtn" title="切换设备">📱</div>
-            <div class="preview-btn" id="directoryBtn" title="文件目录">📂</div>
-            <div class="device-menu" id="deviceMenu">
-                <div class="device-option active" data-device="mobile">📱 手机端</div>
-                <div class="device-option" data-device="tablet">📋 平板端</div>
-                <div class="device-option" data-device="desktop">🖥️ 桌面端</div>
-            </div>
-        </div>
-        <div class="preview-frame-wrapper" id="previewFrameWrapper">
-            <iframe id="previewFrame" class="preview-frame" title="预览"></iframe>
-        </div>
+    <div id="info">⏳ 正在加载依赖...</div>
+    <div id="status-dots">
+        <span class="dot pending" id="dot-001" title="001.js (Three.js)"></span>
+        <span class="dot pending" id="dot-002" title="002.js (MeshBVH)"></span>
+        <span class="dot pending" id="dot-003" title="003.js (BVH-CSG)"></span>
+        <span class="dot pending" id="dot-004" title="004.js (lil-gui)"></span>
+        <span class="dot pending" id="dot-005" title="005.js (OrbitControls)"></span>
+        <span class="dot pending" id="dot-006" title="006.js (EffectComposer)"></span>
     </div>
+    <div id="error-console"></div>
+    <div id="gui-tip">🖱 拖拽旋转 · 滚轮缩放 · 右键平移</div>
 
-    <div class="directory-page" id="directoryPage">
-        <div class="directory-header">
-            <div class="new-file-btn" id="newFileBtn">➕ 新建文件</div>
-            <div class="add-file-btn" id="addFileBtn" title="从模板添加">📋</div>
-            <button class="back-btn" id="backToPreviewBtn">⬅️ 返回预览</button>
-        </div>
-        <div class="file-list" id="fileList">
-            <div class="empty-directory">
-                <div class="empty-icon">📁</div>
-                <p>暂无文件</p>
-                <p style="font-size:0.85rem;margin-top:5px;">点击 📋 从模板添加</p>
-            </div>
-        </div>
-        <div class="add-file-menu" id="addFileMenu">
-            <div class="file-type-section">
-                <div class="file-type-title">🌐 HTML</div>
-                <div class="file-type-option" data-file="index.html"><span>index.html</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-            </div>
-            <div class="file-type-section">
-                <div class="file-type-title">🎨 CSS</div>
-                <div class="file-type-option" data-file="style.css"><span>style.css</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-            </div>
-            <div class="file-type-section">
-                <div class="file-type-title">⚡ JavaScript</div>
-                <div class="file-type-option" data-file="defaults.js"><span>defaults.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="scene-core.js"><span>scene-core.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="geometry-factory.js"><span>geometry-factory.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="texture-manager.js"><span>texture-manager.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="model-manager.js"><span>model-manager.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="ui-builder.js"><span>ui-builder.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="lighting-panel.js"><span>lighting-panel.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="material-render.js"><span>material-render.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="slider-bindings.js"><span>slider-bindings.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-                <div class="file-type-option" data-file="script.js"><span>script.js</span><span class="file-added" style="display:none;">✓ 已添加</span></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="source-page" id="sourcePage">
-        <div class="source-header">
-            <div class="source-title" id="sourceTitle">源代码</div>
-            <button class="back-btn" id="backToDirectoryBtn">⬅️ 返回目录</button>
-        </div>
-        <div class="source-controls">
-            <button class="source-btn copy" id="copyCodeBtn">📋 复制代码</button>
-            <button class="source-btn" id="pasteCodeBtn">📥 粘贴代码</button>
-            <button class="source-btn reset" id="resetFileBtn">🔄 返回初始</button>
-            <button class="source-btn delete" id="deleteFileBtn">🗑️ 删除文件</button>
-        </div>
-        <div class="source-code-container">
-            <textarea id="sourceCode" placeholder="在此编写代码..." spellcheck="false"></textarea>
-        </div>
-    </div>
-</div>
-
-<script>
-    (() => {
-        const STORAGE_KEY = 'code_browser_files_v12_full';
-        const saveToStorage = (data) => {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-            catch (e) { showToast('⚠️ 存储空间不足'); }
-        };
-        const loadFromStorage = () => {
-            try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : null; }
-            catch { return null; }
-        };
-
-        let files = loadFromStorage() || {};
-        let currentFile = null;
-        let deviceMode = 'mobile';
-
-        // DOM 元素（与之前一致，略）
-        const previewPage = document.getElementById('previewPage');
-        const directoryPage = document.getElementById('directoryPage');
-        const sourcePage = document.getElementById('sourcePage');
-        const deviceBtn = document.getElementById('deviceBtn');
-        const directoryBtn = document.getElementById('directoryBtn');
-        const backToPreviewBtn = document.getElementById('backToPreviewBtn');
-        const backToDirectoryBtn = document.getElementById('backToDirectoryBtn');
-        const deviceMenu = document.getElementById('deviceMenu');
-        const addFileBtn = document.getElementById('addFileBtn');
-        const addFileMenu = document.getElementById('addFileMenu');
-        const fileList = document.getElementById('fileList');
-        const newFileBtn = document.getElementById('newFileBtn');
-        const sourceCode = document.getElementById('sourceCode');
-        const sourceTitle = document.getElementById('sourceTitle');
-        const previewFrame = document.getElementById('previewFrame');
-        const previewFrameWrapper = document.getElementById('previewFrameWrapper');
-        const copyCodeBtn = document.getElementById('copyCodeBtn');
-        const pasteCodeBtn = document.getElementById('pasteCodeBtn');
-        const resetFileBtn = document.getElementById('resetFileBtn');
-        const deleteFileBtn = document.getElementById('deleteFileBtn');
-        const deviceOptions = document.querySelectorAll('.device-option');
-        const fileTypeOptions = document.querySelectorAll('.file-type-option');
-
-        // 工具函数
-        const showToast = (msg, dur = 1800) => {
-            const old = document.querySelector('.toast');
-            if (old) old.remove();
-            const t = document.createElement('div');
-            t.className = 'toast';
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(() => { if (t.parentNode) t.remove(); }, dur + 400);
-        };
-        const getFileIcon = name => {
-            const ext = name.split('.').pop().toLowerCase();
-            return { html: '🌐', css: '🎨', js: '⚡' }[ext] || '📄';
-        };
-        const escapeHtml = str => {
-            const d = document.createElement('div');
-            d.textContent = str;
-            return d.innerHTML;
-        };
-
-        const toggleMenu = menu => {
-            const wasOpen = menu.classList.contains('show');
-            deviceMenu.classList.remove('show');
-            addFileMenu.classList.remove('show');
-            if (!wasOpen) menu.classList.add('show');
-        };
-        const closeAllMenus = () => { deviceMenu.classList.remove('show'); addFileMenu.classList.remove('show'); };
-
-        const showPreviewPage = () => {
-            previewPage.style.display = 'flex';
-            directoryPage.style.display = 'none';
-            sourcePage.style.display = 'none';
-            closeAllMenus();
-            updatePreview();
-        };
-        const showDirectoryPage = () => {
-            previewPage.style.display = 'none';
-            directoryPage.style.display = 'flex';
-            sourcePage.style.display = 'none';
-            closeAllMenus();
-            updateFileList();
-        };
-        const showSourcePage = (fileName) => {
-            currentFile = fileName;
-            previewPage.style.display = 'none';
-            directoryPage.style.display = 'none';
-            sourcePage.style.display = 'flex';
-            closeAllMenus();
-            sourceTitle.textContent = `📝 ${fileName}`;
-            sourceCode.value = files[fileName] || '';
-            sourceCode.focus();
-        };
-
-        const setDevice = (device) => {
-            deviceMode = device;
-            deviceOptions.forEach(o => o.classList.toggle('active', o.dataset.device === device));
-            const f = previewFrame, w = previewFrameWrapper;
-            if (device === 'mobile') {
-                f.style.width='375px'; f.style.height='667px'; f.style.maxWidth='100%'; f.style.maxHeight='100%';
-                w.style.alignItems='center'; w.style.justifyContent='center';
-            } else if (device === 'tablet') {
-                f.style.width='768px'; f.style.height='1024px'; f.style.maxWidth='100%'; f.style.maxHeight='100%';
-                w.style.alignItems='center'; w.style.justifyContent='center';
-            } else {
-                f.style.width='100%'; f.style.height='100%'; f.style.maxWidth='100%'; f.style.maxHeight='100%';
-                w.style.alignItems='stretch'; w.style.justifyContent='stretch';
-            }
-            updatePreview();
-        };
-
-        const persist = () => saveToStorage(files);
-
-        const addFile = (fileName) => {
-            if (files.hasOwnProperty(fileName)) {
-                showToast(`文件 "${fileName}" 已存在`);
-                return false;
-            }
-            files[fileName] = getDefaultContent(fileName);
-            persist();
-            updateFileList();
-            updateFileTypeStatus();
-            updatePreview();
-            showToast(`已添加: ${fileName}`);
-            return true;
-        };
-
-        const deleteFile = (fileName) => {
-            delete files[fileName];
-            if (currentFile === fileName) currentFile = null;
-            persist();
-            updateFileList();
-            updateFileTypeStatus();
-            updatePreview();
-        };
-
-        const resetCurrentFile = () => {
-            if (!currentFile) { showToast('没有选中文件'); return; }
-            if (!files.hasOwnProperty(currentFile)) { showToast('当前文件不存在'); return; }
-            files[currentFile] = getDefaultContent(currentFile);
-            sourceCode.value = files[currentFile];
-            persist();
-            updatePreview();
-            showToast(`🔄 已恢复默认: ${currentFile}`);
-        };
-
-        const updateFileTypeStatus = () => {
-            fileTypeOptions.forEach(opt => {
-                const f = opt.dataset.file;
-                const span = opt.querySelector('.file-added');
-                if (span) span.style.display = files.hasOwnProperty(f) ? 'inline' : 'none';
-            });
-        };
-
-        const updateFileList = () => {
-            fileList.innerHTML = '';
-            const names = Object.keys(files).sort();
-            if (!names.length) {
-                fileList.innerHTML = `<div class="empty-directory"><div class="empty-icon">📁</div><p>暂无文件</p><p style="font-size:0.85rem;">点击 📋 从模板添加</p></div>`;
-                return;
-            }
-            names.forEach(name => {
-                const div = document.createElement('div');
-                div.className = 'file-item';
-                div.innerHTML = `<span class="file-item-icon">${getFileIcon(name)}</span>
-                    <div class="file-item-info"><div class="file-name">${escapeHtml(name)}</div><div class="file-path">/${escapeHtml(name)}</div></div>`;
-                div.addEventListener('click', () => showSourcePage(name));
-                fileList.appendChild(div);
-            });
-        };
-
-        const syncCurrentFile = () => {
-            if (currentFile && files.hasOwnProperty(currentFile)) {
-                files[currentFile] = sourceCode.value;
-                persist();
-                updatePreview();
-            }
-        };
-
-        // 获取预览器所在目录的绝对 URL（末尾带斜杠）
-        const getBaseUrl = () => {
-            const path = window.location.pathname;
-            const lastSlash = path.lastIndexOf('/');
-            const dir = lastSlash >= 0 ? path.substring(0, lastSlash + 1) : '/';
-            return window.location.origin + dir;
-        };
-
-        // ========== 核心预览生成（包含完整后处理映射） ==========
-        const updatePreview = () => {
-            const htmlFile = files['index.html'] || '';
-            const hasCustomImportMap = /<script\s+type=["']importmap["']/i.test(htmlFile);
-
-            if (hasCustomImportMap) {
-                let finalHtml = htmlFile;
-                if (!/<base\s/i.test(finalHtml)) {
-                    finalHtml = finalHtml.replace(/<head>/i, `<head>\n<base href="${getBaseUrl()}">`);
-                }
-                previewFrame.srcdoc = finalHtml;
-                return;
-            }
-
-            // 收集 CSS
-            const allCssFiles = Object.keys(files)
-                .filter(f => f.endsWith('.css'))
-                .sort((a, b) => (a === 'style.css' ? -1 : b === 'style.css' ? 1 : a.localeCompare(b)));
-            const combinedCSS = allCssFiles.map(f => files[f]).join('\n');
-
-            // 收集 JS 并智能使用模块标签
-            const predefinedOrder = [
-                'defaults.js', 'scene-core.js', 'geometry-factory.js', 'texture-manager.js',
-                'model-manager.js', 'ui-builder.js', 'lighting-panel.js', 'material-render.js',
-                'slider-bindings.js', 'script.js'
-            ];
-            const orderMap = {};
-            predefinedOrder.forEach((name, idx) => { orderMap[name] = idx; });
-
-            const allJsFiles = Object.keys(files)
-                .filter(f => f.endsWith('.js'))
-                .sort((a, b) => {
-                    const ia = orderMap.hasOwnProperty(a) ? orderMap[a] : 9999;
-                    const ib = orderMap.hasOwnProperty(b) ? orderMap[b] : 9999;
-                    if (ia !== ib) return ia - ib;
-                    return a.localeCompare(b);
-                });
-
-            const jsScripts = allJsFiles.map(f => {
-                const code = files[f].trim();
-                const isModule = code.startsWith('import ') || code.startsWith('import{') || /^import\s/.test(code);
-                return isModule ? `<script type="module">\n${code}\n<\/script>` : `<script>\n${code}\n<\/script>`;
-            }).join('\n');
-
-            // 完整的依赖库映射（001-012）
-            const dependencyBlock = `
-<script type="importmap">
-{
-    "imports": {
-        "three": "./001.js",
-        "three-mesh-bvh": "./002.js",
-        "three-bvh-csg": "./003.js",
-        "lil-gui": "./004.js",
-        "three/addons/controls/OrbitControls.js": "./005.js",
-        "three/addons/postprocessing/EffectComposer.js": "./006.js",
-        "three/addons/postprocessing/RenderPass.js": "./007.js",
-        "three/addons/postprocessing/ShaderPass.js": "./008.js",
-        "three/addons/shaders/CopyShader.js": "./009.js",
-        "three/addons/shaders/FXAAShader.js": "./010.js",
-        "three/addons/postprocessing/Pass.js": "./011.js",
-        "three/addons/postprocessing/MaskPass.js": "./012.js"
-    }
-}
-<\/script>
-<script type="module">
-import * as THREE from 'three';
-import { MeshBVH } from 'three-mesh-bvh';
-import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION, REVERSE_SUBTRACTION } from 'three-bvh-csg';
-import GUI from 'lil-gui';
-window.THREE = THREE;
-window.MeshBVH = MeshBVH;
-window.Brush = Brush;
-window.Evaluator = Evaluator;
-window.SUBTRACTION = SUBTRACTION;
-window.ADDITION = ADDITION;
-window.INTERSECTION = INTERSECTION;
-window.REVERSE_SUBTRACTION = REVERSE_SUBTRACTION;
-window.GUI = GUI;
-<\/script>`;
-
-            // 增强的错误报告
-            const errorReporter = `
-<script>
-(function() {
-    window.onerror = function(msg, url, line, col, error) {
-        showError('❌ ' + msg + ' (行 ' + line + ')');
-    };
-    window.addEventListener('unhandledrejection', function(e) {
-        showError('❌ Promise 错误: ' + e.reason);
-    });
-    window.addEventListener('error', function(e) {
-        if (e.target && e.target.tagName === 'SCRIPT' && e.target.type === 'module') {
-            showError('❌ 模块加载失败: ' + (e.target.src || '未知文件'));
+    <!-- 导入映射：001-006 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./001.js",
+            "three-mesh-bvh": "./002.js",
+            "three-bvh-csg": "./003.js",
+            "lil-gui": "./004.js",
+            "three/addons/controls/OrbitControls.js": "./005.js",
+            "three/addons/postprocessing/EffectComposer.js": "./006.js"
         }
-    }, true);
-    function showError(msg) {
-        const div = document.createElement('div');
-        div.style.cssText = 'background:#ff4444;color:white;padding:10px;position:fixed;top:0;left:0;right:0;z-index:99999;font-family:monospace;';
-        div.textContent = msg;
-        document.body.prepend(div);
     }
-})();
-<\/script>`;
+    </script>
 
-            let finalHtml;
-            if (htmlFile.trim()) {
-                finalHtml = htmlFile;
-                if (!/<base\s/i.test(finalHtml)) {
-                    finalHtml = finalHtml.replace(/<head>/i, `<head>\n<base href="${getBaseUrl()}">`);
-                }
-                // 注入 CSS
-                if (combinedCSS.trim()) {
-                    const cssBlock = `<style>\n${combinedCSS}\n</style>`;
-                    if (/<\/head>/i.test(finalHtml)) {
-                        finalHtml = finalHtml.replace(/<\/head>/i, cssBlock + '\n</head>');
-                    } else if (/<head[^>]*>/i.test(finalHtml)) {
-                        finalHtml = finalHtml.replace(/(<head[^>]*>)/i, '$1\n' + cssBlock);
+    <script type="module">
+        // =============================================================
+        // 1. DOM 元素
+        // =============================================================
+        const infoDiv = document.getElementById('info');
+        const errorConsole = document.getElementById('error-console');
+        const dots = {
+            '001': document.getElementById('dot-001'),
+            '002': document.getElementById('dot-002'),
+            '003': document.getElementById('dot-003'),
+            '004': document.getElementById('dot-004'),
+            '005': document.getElementById('dot-005'),
+            '006': document.getElementById('dot-006'),
+        };
+
+        function setDotStatus(id, status) {
+            const dot = dots[id];
+            if (!dot) return;
+            dot.className = `dot ${status}`;
+        }
+
+        function showError(msg) {
+            errorConsole.textContent = msg;
+            errorConsole.classList.add('visible');
+            infoDiv.innerHTML = `❌ 依赖加载失败 — 请查看下方错误信息`;
+            infoDiv.style.borderColor = 'rgba(255,0,0,0.4)';
+        }
+
+        // =============================================================
+        // 2. 动态加载所有依赖
+        // =============================================================
+        async function loadDependencies() {
+            const deps = {};
+
+            try {
+                // 001 Three.js
+                setDotStatus('001', 'pending');
+                deps.THREE = await import('three');
+                setDotStatus('001', 'loaded');
+                infoDiv.textContent = '✅ 001.js (Three.js) 加载成功';
+
+                // 002 MeshBVH
+                setDotStatus('002', 'pending');
+                const bvhModule = await import('three-mesh-bvh');
+                deps.MeshBVH = bvhModule.MeshBVH;
+                setDotStatus('002', 'loaded');
+
+                // 003 BVH-CSG
+                setDotStatus('003', 'pending');
+                const csgModule = await import('three-bvh-csg');
+                deps.Brush = csgModule.Brush;
+                deps.Evaluator = csgModule.Evaluator;
+                deps.SUBTRACTION = csgModule.SUBTRACTION;
+                setDotStatus('003', 'loaded');
+
+                // 004 lil-gui
+                setDotStatus('004', 'pending');
+                const guiModule = await import('lil-gui');
+                deps.GUI = guiModule.default;
+                setDotStatus('004', 'loaded');
+
+                // 005 OrbitControls
+                setDotStatus('005', 'pending');
+                const controlsModule = await import('three/addons/controls/OrbitControls.js');
+                deps.OrbitControls = controlsModule.OrbitControls;
+                setDotStatus('005', 'loaded');
+
+                // 006 EffectComposer
+                setDotStatus('006', 'pending');
+                const composerModule = await import('three/addons/postprocessing/EffectComposer.js');
+                deps.EffectComposer = composerModule.EffectComposer;
+                setDotStatus('006', 'loaded');
+
+                infoDiv.innerHTML = `✅ 全部 6 个依赖加载成功！<span class="badge">Three.js ${deps.THREE.REVISION}</span>`;
+                return deps;
+            } catch (err) {
+                console.error('加载依赖时出错:', err);
+                // 标记未加载的点为 error
+                for (const [id, dot] of Object.entries(dots)) {
+                    if (dot.classList.contains('pending') || dot.className === 'dot pending') {
+                        setDotStatus(id, 'error');
                     }
                 }
-                // 注入依赖库
-                if (/<head>/i.test(finalHtml)) {
-                    finalHtml = finalHtml.replace(/<head>/i, `<head>\n${dependencyBlock}`);
-                } else {
-                    finalHtml = dependencyBlock + '\n' + finalHtml;
+                showError(`❌ 加载失败: ${err.message || err}\n请检查文件是否存在及格式是否正确。`);
+                throw err;
+            }
+        }
+
+        // =============================================================
+        // 3. 初始化场景（依赖全部加载后）
+        // =============================================================
+        async function initScene(deps) {
+            const { THREE, MeshBVH, Brush, Evaluator, SUBTRACTION, GUI, OrbitControls, EffectComposer } = deps;
+
+            // ---------- 场景 / 相机 / 渲染器 ----------
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d0d1a);
+
+            const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
+            camera.position.set(4, 2.5, 5);
+
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                powerPreference: 'high-performance',
+            });
+            renderer.setSize(innerWidth, innerHeight);
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.body.appendChild(renderer.domElement);
+
+            // ---------- OrbitControls ----------
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 1.5;
+            controls.maxDistance = 20;
+            controls.autoRotate = false;
+            controls.update();
+
+            // ---------- 光照 ----------
+            const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+            scene.add(ambientLight);
+            const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x362d59, 0.8);
+            scene.add(hemiLight);
+            const mainLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+            mainLight.position.set(3, 6, 4);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 1024;
+            mainLight.shadow.mapSize.height = 1024;
+            mainLight.shadow.camera.near = 0.5;
+            mainLight.shadow.camera.far = 20;
+            mainLight.shadow.camera.left = -5;
+            mainLight.shadow.camera.right = 5;
+            mainLight.shadow.camera.top = 5;
+            mainLight.shadow.camera.bottom = -5;
+            scene.add(mainLight);
+            const fillLight = new THREE.DirectionalLight(0x8888ff, 0.6);
+            fillLight.position.set(-3, 1, -2);
+            scene.add(fillLight);
+            const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            rimLight.position.set(0, -2, 4);
+            scene.add(rimLight);
+
+            // ---------- 辅助 ----------
+            const gridHelper = new THREE.GridHelper(6, 24, 0x8888cc, 0x444466);
+            gridHelper.position.y = -1.2;
+            scene.add(gridHelper);
+            const ringGeo = new THREE.TorusGeometry(1.8, 0.025, 16, 80);
+            const ringMat = new THREE.MeshStandardMaterial({
+                color: 0x4466aa,
+                emissive: 0x224488,
+                emissiveIntensity: 0.15,
+                transparent: true,
+                opacity: 0.3,
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = -1.15;
+            scene.add(ring);
+
+            // ---------- 布尔运算 ----------
+            const boxGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+            const sphereGeo = new THREE.SphereGeometry(0.95, 48, 48);
+            boxGeo.boundsTree = new MeshBVH(boxGeo);
+            sphereGeo.boundsTree = new MeshBVH(sphereGeo);
+
+            const boxBrush = new Brush(boxGeo);
+            const sphereBrush = new Brush(sphereGeo);
+            sphereBrush.position.set(0.75, 0.75, 0.75);
+            sphereBrush.updateMatrixWorld();
+
+            const evaluator = new Evaluator();
+            let result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
+            scene.add(result);
+
+            // ---------- 材质 ----------
+            const settings = {
+                rotationSpeed: 0.006,
+                color: '#4cc9f0',
+                roughness: 0.35,
+                metalness: 0.15,
+                wireframe: false,
+                gridVisible: true,
+                autoRotateOrbit: false,
+                resetCamera: () => {
+                    camera.position.set(4, 2.5, 5);
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+                },
+                resetScene: () => {
+                    sphereBrush.position.set(0.75, 0.75, 0.75);
+                    sphereBrush.updateMatrixWorld();
+                    const newResult = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
+                    scene.remove(result);
+                    if (result.material && newResult.material) {
+                        newResult.material.color.copy(result.material.color);
+                        newResult.material.roughness = result.material.roughness;
+                        newResult.material.metalness = result.material.metalness;
+                        newResult.material.wireframe = result.material.wireframe;
+                    }
+                    scene.add(newResult);
+                    result = newResult;
+                    result.rotation.set(0, 0, 0);
+                },
+            };
+
+            const material = new THREE.MeshStandardMaterial({
+                color: settings.color,
+                roughness: settings.roughness,
+                metalness: settings.metalness,
+                wireframe: settings.wireframe,
+                envMapIntensity: 0.6,
+            });
+            result.material = material;
+
+            function updateMaterial() {
+                if (result.material) {
+                    result.material.color.set(settings.color);
+                    result.material.roughness = settings.roughness;
+                    result.material.metalness = settings.metalness;
+                    result.material.wireframe = settings.wireframe;
+                    result.material.needsUpdate = true;
                 }
-                // 注入错误报告
-                if (/<head>/i.test(finalHtml)) {
-                    finalHtml = finalHtml.replace(/<head>/i, `<head>\n${errorReporter}`);
-                } else {
-                    finalHtml = errorReporter + '\n' + finalHtml;
-                }
-                // 注入用户 JS
-                if (jsScripts.trim()) {
-                    if (/<\/body>/i.test(finalHtml)) {
-                        finalHtml = finalHtml.replace(/<\/body>/i, jsScripts + '\n</body>');
-                    } else if (/<body[^>]*>/i.test(finalHtml)) {
-                        finalHtml += '\n' + jsScripts;
-                    } else {
-                        finalHtml += '\n' + jsScripts;
+            }
+
+            // ---------- GUI ----------
+            const gui = new GUI({ title: '🎛 控制面板', width: 300 });
+            const objFolder = gui.addFolder('物体');
+            objFolder.add(settings, 'rotationSpeed', 0, 0.03, 0.0005).name('自转速度');
+            objFolder.addColor(settings, 'color').name('颜色').onChange(updateMaterial);
+            objFolder.add(settings, 'roughness', 0, 1, 0.01).name('粗糙度').onChange(updateMaterial);
+            objFolder.add(settings, 'metalness', 0, 1, 0.01).name('金属感').onChange(updateMaterial);
+            objFolder.add(settings, 'wireframe').name('线框模式').onChange(updateMaterial);
+            objFolder.add(settings, 'resetScene').name('↺ 重置物体');
+            objFolder.open();
+
+            const sceneFolder = gui.addFolder('场景');
+            sceneFolder.add(settings, 'gridVisible').name('显示网格').onChange(v => {
+                gridHelper.visible = v;
+                ring.visible = v;
+            });
+            sceneFolder.add(settings, 'autoRotateOrbit').name('🌐 自动旋转视角').onChange(v => {
+                controls.autoRotate = v;
+            });
+            sceneFolder.add(settings, 'resetCamera').name('📷 重置视角');
+            sceneFolder.open();
+
+            const infoFolder = gui.addFolder('系统信息');
+            const infoData = {
+                threeVersion: THREE.REVISION,
+                depsLoaded: '6 / 6',
+                csgStatus: '✅ 正常',
+                composerStatus: '✅ 已加载',
+            };
+            infoFolder.add(infoData, 'threeVersion').name('Three.js 版本').disable();
+            infoFolder.add(infoData, 'depsLoaded').name('依赖加载').disable();
+            infoFolder.add(infoData, 'csgStatus').name('CSG 状态').disable();
+            infoFolder.add(infoData, 'composerStatus').name('EffectComposer').disable();
+            infoFolder.open();
+
+            // ---------- 后处理演示 (EffectComposer) ----------
+            let composer = null;
+            try {
+                // 动态导入其他必要模块（如果存在）
+                const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
+                const { ShaderPass } = await import('three/addons/postprocessing/ShaderPass.js');
+                const { CopyShader } = await import('three/addons/shaders/CopyShader.js');
+                const { FXAAShader } = await import('three/addons/shaders/FXAAShader.js');
+
+                composer = new EffectComposer(renderer);
+                const renderPass = new RenderPass(scene, camera);
+                composer.addPass(renderPass);
+
+                const fxaaPass = new ShaderPass(FXAAShader);
+                const pixelRatio = renderer.getPixelRatio();
+                fxaaPass.uniforms['resolution'].value.set(1 / (innerWidth * pixelRatio), 1 / (innerHeight * pixelRatio));
+                fxaaPass.renderToScreen = true;
+                composer.addPass(fxaaPass);
+
+                infoData.composerStatus = '✅ FXAA 已启用';
+                console.log('✨ 后处理管线 (EffectComposer + FXAA) 已激活');
+            } catch (e) {
+                infoData.composerStatus = '⚠️ 缺少附加模块 (RenderPass等)';
+                console.warn('未找到完整的后处理模块，仅测试 EffectComposer 导入。', e.message);
+            }
+
+            // ---------- 星星 ----------
+            const starsGeo = new THREE.BufferGeometry();
+            const starCount = 600;
+            const starPos = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount * 3; i++) {
+                starPos[i] = (Math.random() - 0.5) * 60;
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starsMat = new THREE.PointsMaterial({
+                color: 0x6688cc,
+                size: 0.06,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true,
+            });
+            const stars = new THREE.Points(starsGeo, starsMat);
+            scene.add(stars);
+
+            // ---------- 窗口自适应 ----------
+            window.addEventListener('resize', () => {
+                const w = innerWidth;
+                const h = innerHeight;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+                if (composer) {
+                    composer.setSize(w, h);
+                    if (fxaaPass) {
+                        const pr = renderer.getPixelRatio();
+                        fxaaPass.uniforms['resolution'].value.set(1 / (w * pr), 1 / (h * pr));
                     }
                 }
-            } else {
-                finalHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>3D 预览</title>
-<base href="${getBaseUrl()}">
-${dependencyBlock}
-${errorReporter}
-${combinedCSS.trim() ? `<style>\n${combinedCSS}\n</style>` : ''}
-<style>body{margin:0;overflow:hidden;background:#111;}</style>
-</head>
-<body>
-${jsScripts || ''}
-</body></html>`;
-            }
+            });
 
-            previewFrame.srcdoc = finalHtml;
-        };
-
-        // ========== 默认内容 ==========
-        const getDefaultContent = (fileName) => {
-            const ext = fileName.split('.').pop().toLowerCase();
-            if (ext === 'html') {
-                return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"><title>我的网页</title></head>
-<body>
-  <div class="container">
-    <h1>欢迎</h1>
-    <button id="myButton">点击我</button>
-  </div>
-</body>
-</html>`;
-            }
-            if (ext === 'css') {
-                return `body {
-  font-family: Arial;
-  margin: 0;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  min-height: 100vh;
-}
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  background: rgba(255,255,255,0.1);
-  padding: 30px;
-  border-radius: 15px;
-}
-button {
-  padding: 12px 24px;
-  background: #4cc9f0;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}`;
-            }
-            if (ext === 'js') {
-                if (fileName === 'script.js') {
-                    return `// 离线依赖已全局可用: THREE, MeshBVH, Brush, Evaluator, SUBTRACTION 等
-// 亦可使用模块导入: import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-let scene, camera, renderer, resultMesh;
-function init() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111122);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(3,2,5);
-    camera.lookAt(0,0,0);
-    renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    scene.add(new THREE.AmbientLight(0x404040,0.6));
-    const dirLight = new THREE.DirectionalLight(0xffffff,1);
-    dirLight.position.set(1,2,1);
-    scene.add(dirLight);
-    scene.add(new THREE.GridHelper(4,20,0x888888,0x444444));
-    const boxGeo = new THREE.BoxGeometry(1.5,1.5,1.5);
-    const sphereGeo = new THREE.SphereGeometry(0.9,32,32);
-    boxGeo.boundsTree = new MeshBVH(boxGeo);
-    sphereGeo.boundsTree = new MeshBVH(sphereGeo);
-    const boxBrush = new Brush(boxGeo);
-    const sphereBrush = new Brush(sphereGeo);
-    sphereBrush.position.set(0.7,0.7,0.7);
-    sphereBrush.updateMatrixWorld();
-    const evaluator = new Evaluator();
-    resultMesh = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
-    if(resultMesh){ resultMesh.material = new THREE.MeshStandardMaterial({color:0x4cc9f0,roughness:0.4}); scene.add(resultMesh); }
-    const gui = new GUI({title:'控制面板',width:280});
-    let rotationSpeed = 0.005;
-    gui.add({speed:rotationSpeed},'speed',0,0.02).name('旋转速度').onChange(v=>{rotationSpeed=v;});
-    gui.addColor({color:0x4cc9f0},'color').name('颜色').onChange(v=>{if(resultMesh)resultMesh.material.color.set(v);});
-    window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
-    function animate(){ requestAnimationFrame(animate); if(resultMesh)resultMesh.rotation.y+=rotationSpeed; renderer.render(scene,camera); }
-    animate();
-}
-window.addEventListener('DOMContentLoaded', init);`;
+            // ---------- 动画循环 ----------
+            function animate() {
+                requestAnimationFrame(animate);
+                if (result) {
+                    result.rotation.y += settings.rotationSpeed;
+                    const floatOffset = Math.sin(Date.now() * 0.001) * 0.04;
+                    result.position.y = floatOffset;
                 }
-                return `// ${fileName}\nconsole.log('${fileName} 已加载');`;
+                stars.rotation.y += 0.00008;
+                controls.update();
+
+                if (composer) {
+                    composer.render();
+                } else {
+                    renderer.render(scene, camera);
+                }
             }
-            return `// ${fileName}`;
-        };
+            animate();
 
-        // 剪贴板
-        const copyCode = async () => { try { await navigator.clipboard.writeText(sourceCode.value); showToast('✅ 已复制'); } catch { sourceCode.select(); document.execCommand('copy'); showToast('✅ 已复制 (旧版)'); } };
-        const pasteCode = async () => { try { const t = await navigator.clipboard.readText(); sourceCode.value = t; syncCurrentFile(); showToast('📥 已粘贴'); } catch { showToast('请手动粘贴 (Ctrl+V)'); sourceCode.focus(); } };
+            errorConsole.classList.remove('visible');
+            infoDiv.innerHTML = `✅ 全部 6 个依赖加载成功！<span class="badge">Three.js ${THREE.REVISION}</span>`;
+            infoDiv.style.borderColor = 'rgba(46, 204, 113, 0.3)';
+            console.log('🚀 场景初始化完成，EffectComposer 测试通过');
+        }
 
-        // 事件绑定
-        deviceBtn.addEventListener('click', e => { e.stopPropagation(); toggleMenu(deviceMenu); });
-        addFileBtn.addEventListener('click', e => { e.stopPropagation(); updateFileTypeStatus(); toggleMenu(addFileMenu); });
-        directoryBtn.addEventListener('click', showDirectoryPage);
-        backToPreviewBtn.addEventListener('click', showPreviewPage);
-        backToDirectoryBtn.addEventListener('click', showDirectoryPage);
-        deviceOptions.forEach(o => o.addEventListener('click', () => { setDevice(o.dataset.device); closeAllMenus(); }));
-        fileTypeOptions.forEach(o => o.addEventListener('click', () => { addFile(o.dataset.file); closeAllMenus(); }));
-        newFileBtn.addEventListener('click', () => { const name = prompt('输入文件名（含扩展名）：'); if (name && name.trim()) addFile(name.trim()); });
-        copyCodeBtn.addEventListener('click', copyCode);
-        pasteCodeBtn.addEventListener('click', pasteCode);
-        resetFileBtn.addEventListener('click', resetCurrentFile);
-        deleteFileBtn.addEventListener('click', () => { if (!currentFile) return showToast('没有选中文件'); if (confirm(`确定删除 ${currentFile} ？`)) { const f = currentFile; deleteFile(f); showDirectoryPage(); showToast(`已删除: ${f}`); } });
-        sourceCode.addEventListener('input', syncCurrentFile);
-        sourceCode.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); syncCurrentFile(); showToast('💾 已保存并更新预览'); } });
-        document.addEventListener('click', e => { if (!deviceBtn.contains(e.target) && !deviceMenu.contains(e.target)) deviceMenu.classList.remove('show'); if (!addFileBtn.contains(e.target) && !addFileMenu.contains(e.target)) addFileMenu.classList.remove('show'); });
-        window.addEventListener('resize', () => { if (deviceMode === 'desktop') updatePreview(); });
-
-        // 启动
-        const init = () => {
-            if (!Object.keys(files).length) {
-                files['index.html'] = getDefaultContent('index.html');
-                files['style.css'] = getDefaultContent('style.css');
-                files['script.js'] = getDefaultContent('script.js');
-                persist();
+        // =============================================================
+        // 4. 主流程
+        // =============================================================
+        (async function main() {
+            try {
+                const deps = await loadDependencies();
+                await initScene(deps);
+            } catch (err) {
+                console.error('初始化失败:', err);
             }
-            updateFileTypeStatus();
-            updateFileList();
-            setDevice('mobile');
-            showPreviewPage();
-        };
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-        else init();
-    })();
-</script>
+        })();
+
+        window.addEventListener('error', (e) => {
+            console.error('全局错误:', e);
+            if (!errorConsole.classList.contains('visible')) {
+                showError(`未捕获的错误: ${e.message || e}`);
+            }
+        });
+    </script>
 </body>
 </html>
