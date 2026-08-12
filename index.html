@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>测试 008 (ShaderPass)</title>
+    <title>测试 010 (FXAAShader)</title>
 </head>
 <body>
     <pre id="log"></pre>
@@ -17,6 +17,7 @@
             "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
             "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
             "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
+            "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
             "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
         }
     }
@@ -28,7 +29,7 @@
             log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
         };
 
-        print('🔍 测试 008 (ShaderPass) + 009 (CopyShader)\n');
+        print('🔍 测试 010 (FXAAShader)\n');
 
         try {
             print('⏳ 加载 Three.js...');
@@ -43,20 +44,20 @@
             const rp = await import('three/addons/postprocessing/RenderPass.js');
             print('✅ RenderPass 加载成功', 'lime');
 
-            print('⏳ 加载 CopyShader...');
-            const cs = await import('three/addons/shaders/CopyShader.js');
-            print('✅ CopyShader 加载成功', 'lime');
-
             print('⏳ 加载 ShaderPass...');
             const sp = await import('three/addons/postprocessing/ShaderPass.js');
             print('✅ ShaderPass 加载成功', 'lime');
-            print('ShaderPass 导出: ' + Object.keys(sp).join(', '));
 
-            if (typeof sp.ShaderPass !== 'function') {
-                throw new Error('ShaderPass 不是一个构造函数');
+            print('⏳ 加载 FXAAShader...');
+            const fxs = await import('three/addons/shaders/FXAAShader.js');
+            print('✅ FXAAShader 加载成功', 'lime');
+            print('FXAAShader 导出: ' + Object.keys(fxs).join(', '));
+
+            if (!fxs.FXAAShader) {
+                throw new Error('FXAAShader 未正确导出');
             }
 
-            // 实例化测试
+            // 简单实例化测试
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera();
             const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -66,12 +67,16 @@
             const renderPass = new rp.RenderPass(scene, camera);
             composer.addPass(renderPass);
 
-            // 使用 CopyShader 创建一个简单的拷贝通道
-            const copyPass = new sp.ShaderPass(cs.CopyShader);
-            copyPass.renderToScreen = true;
-            composer.addPass(copyPass);
+            const fxaaPass = new sp.ShaderPass(fxs.FXAAShader);
+            const pixelRatio = renderer.getPixelRatio();
+            fxaaPass.uniforms['resolution'].value.set(
+                1 / (100 * pixelRatio),
+                1 / (100 * pixelRatio)
+            );
+            fxaaPass.renderToScreen = true;
+            composer.addPass(fxaaPass);
 
-            print('✅ ShaderPass 实例化成功，后处理管线可搭建', 'lime');
+            print('✅ FXAAShader 通过 ShaderPass 实例化成功，后处理管线完整', 'lime');
             renderer.dispose();
         } catch (err) {
             print('❌ 失败: ' + err.message, 'red');
