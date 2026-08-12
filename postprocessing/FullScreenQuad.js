@@ -1,8 +1,15 @@
 import {
-	BufferGeometry,
-	Float32BufferAttribute,
-	OrthographicCamera,
-	Mesh
+	Color,
+	FrontSide,
+	Mesh,
+	PlaneGeometry,
+	ShaderMaterial,
+	UniformsUtils,
+	Vector2,
+	Vector3,
+	WebGLRenderer,
+	WebGLRenderTarget,
+	OrthographicCamera
 } from 'three';
 
 class Pass {
@@ -39,54 +46,44 @@ class Pass {
 
 // Helper for passes that need to fill the viewport with a single quad.
 
-const _camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-
-// https://github.com/mrdoob/three.js/pull/21358
-
-class FullscreenTriangleGeometry extends BufferGeometry {
-
-	constructor() {
-
-		super();
-
-		this.setAttribute( 'position', new Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
-		this.setAttribute( 'uv', new Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
-
-	}
-
-}
-
-const _geometry = new FullscreenTriangleGeometry();
-
 class FullScreenQuad {
 
 	constructor( material ) {
 
-		this._mesh = new Mesh( _geometry, material );
+		this._canvas = document.createElementNS( 'http://www.w3.org/1999/xhtml', 'canvas' );
+		this._canvas.width = 2;
+		this._canvas.height = 2;
+
+		const context = this._canvas.getContext( 'webgl2', { antialias: false } );
+		this._renderer = new WebGLRenderer( { canvas: this._canvas, context: context } );
+		this._renderer.setPixelRatio( 1 );
+		this._renderer.setSize( 2, 2, false );
+
+		this._camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+		this._geometry = new PlaneGeometry( 2, 2 );
+		this._material = material;
+
+		this._mesh = new Mesh( this._geometry, this._material );
 
 	}
 
 	dispose() {
 
 		this._mesh.geometry.dispose();
+		this._mesh.material.dispose();
+		this._renderer.dispose();
 
 	}
 
-	render( renderer ) {
+	render( renderer, writeBuffer, readBuffer, deltaTime, maskActive ) {
 
-		renderer.render( this._mesh, _camera );
+		this._mesh.material = this._material;
+		this._renderer.setRenderTarget( readBuffer );
+		this._renderer.render( this._scene, this._camera );
 
-	}
-
-	get material() {
-
-		return this._mesh.material;
-
-	}
-
-	set material( value ) {
-
-		this._mesh.material = value;
+		renderer.setRenderTarget( writeBuffer );
+		renderer.render( this._scene, this._camera );
 
 	}
 
