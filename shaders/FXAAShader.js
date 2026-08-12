@@ -1,104 +1,61 @@
-import { Pass } from './Pass.js';
+/**
+ * FXAA shader for v2.8.
+ * https://github.com/hughsk/fxaa
+ */
 
-class MaskPass extends Pass {
+const FXAAShader = {
+	name: 'FXAAShader',
+	uniforms: {
+		'tDiffuse': { value: null },
+		'resolution': { value: new Vector2( 1 / 1024, 1 / 512 ) }
+	},
+	vertexShader: /* glsl */`
+		varying vec2 vUv;
+		void main() {
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+		}`,
+	fragmentShader: /* glsl */`
+		#define FXAA_REDUCE_MIN   (1.0/128.0)
+		#define FXAA_REDUCE_MUL   (1.0/8.0)
+		#define FXAA_SPAN_MAX     8.0
+		varying vec2 vUv;
+		uniform sampler2D tDiffuse;
+		uniform vec2 resolution;
+		void main() {
+			vec3 rgbNW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, -1.0 ) ) * resolution ).xyz;
+			vec3 rgbNE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, -1.0 ) ) * resolution ).xyz;
+			vec3 rgbSW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, 1.0 ) ) * resolution ).xyz;
+			vec3 rgbSE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, 1.0 ) ) * resolution ).xyz;
+			vec4 rgbaM  = texture2D( tDiffuse,  gl_FragCoord.xy  * resolution );
+			vec3 rgbM  = rgbaM.xyz;
+			float opacity  = rgbaM.w;
+			vec3 luma = vec3( 0.299, 0.587, 0.114 );
+			float lumaNW = dot( rgbNW, luma );
+			float lumaNE = dot( rgbNE, luma );
+			float lumaSW = dot( rgbSW, luma );
+			float lumaSE = dot( rgbSE, luma );
+			float lumaM  = dot( rgbM,  luma );
+			float lumaMin = min( lumaM, min( min( lumaNW, lumaNE ), min( lumaSW, lumaSE ) ) );
+			float lumaMax = max( lumaM, max( max( lumaNW, lumaNE ), max( lumaSW, lumaSE ) ) );
+			vec2 dir;
+			dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+			dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+			float dirReduce = max( ( lumaNW + lumaNE + lumaSW + lumaSE ) * ( 0.25 * FXAA_REDUCE_MUL ), FXAA_REDUCE_MIN );
+			float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );
+			dir = min( vec2( FXAA_SPAN_MAX, FXAA_SPAN_MAX ), max( vec2( -FXAA_SPAN_MAX, -FXAA_SPAN_MAX ), dir * rcpDirMin ) ) * resolution;
+			vec4 rgbA = 0.5 * ( texture2D( tDiffuse, gl_FragCoord.xy  * resolution + dir * ( 1.0 / 3.0 - 0.5 ) ) +
+				texture2D( tDiffuse, gl_FragCoord.xy  * resolution + dir * ( 2.0 / 3.0 - 0.5 ) ) );
+			vec4 rgbB = rgbA * 0.5 + 0.25 * ( texture2D( tDiffuse, gl_FragCoord.xy  * resolution + dir * ( 0.0 / 3.0 - 0.5 ) ) +
+				texture2D( tDiffuse, gl_FragCoord.xy  * resolution + dir * ( 3.0 / 3.0 - 0.5 ) ) );
+			float lumaB = dot( rgbB.rgb, luma );
+			if ( ( lumaB < lumaMin ) || ( lumaB > lumaMax ) ) {
+				gl_FragColor = rgbA;
+			} else {
+				gl_FragColor = rgbB;
+			}
+			gl_FragColor.a = opacity;
+		}`
+};
 
-	constructor( scene, camera ) {
-
-		super();
-
-		this.scene = scene;
-		this.camera = camera;
-
-		this.clear = true;
-		this.needsSwap = false;
-
-		this.inverse = false;
-
-	}
-
-	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
-
-		const context = renderer.getContext();
-		const state = renderer.state;
-
-		// don't update color or depth
-
-		state.buffers.color.setMask( false );
-		state.buffers.depth.setMask( false );
-
-		// lock buffers
-
-		state.buffers.color.setLocked( true );
-		state.buffers.depth.setLocked( true );
-
-		// set up stencil
-
-		let writeValue, clearValue;
-
-		if ( this.inverse ) {
-
-			writeValue = 0;
-			clearValue = 1;
-
-		} else {
-
-			writeValue = 1;
-			clearValue = 0;
-
-		}
-
-		state.buffers.stencil.setTest( true );
-		state.buffers.stencil.setOp( context.REPLACE, context.REPLACE, context.REPLACE );
-		state.buffers.stencil.setFunc( context.ALWAYS, writeValue, 0xffffffff );
-		state.buffers.stencil.setClear( clearValue );
-		state.buffers.stencil.setLocked( true );
-
-		// draw into the stencil buffer
-
-		renderer.setRenderTarget( readBuffer );
-		if ( this.clear ) renderer.clear();
-		renderer.render( this.scene, this.camera );
-
-		renderer.setRenderTarget( writeBuffer );
-		if ( this.clear ) renderer.clear();
-		renderer.render( this.scene, this.camera );
-
-		// unlock color and depth buffer and make them writable for subsequent rendering/clearing
-
-		state.buffers.color.setLocked( false );
-		state.buffers.depth.setLocked( false );
-
-		state.buffers.color.setMask( true );
-		state.buffers.depth.setMask( true );
-
-		// only render where stencil is set to 1
-
-		state.buffers.stencil.setLocked( false );
-		state.buffers.stencil.setFunc( context.EQUAL, 1, 0xffffffff ); // draw if == 1
-		state.buffers.stencil.setOp( context.KEEP, context.KEEP, context.KEEP );
-		state.buffers.stencil.setLocked( true );
-
-	}
-
-}
-
-class ClearMaskPass extends Pass {
-
-	constructor() {
-
-		super();
-
-		this.needsSwap = false;
-
-	}
-
-	render( renderer /*, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
-
-		renderer.state.buffers.stencil.setLocked( false );
-		renderer.state.buffers.stencil.setTest( false );
-
-	}
-
-}
-
-export { MaskPass, ClearMaskPass };
+export { FXAAShader };
