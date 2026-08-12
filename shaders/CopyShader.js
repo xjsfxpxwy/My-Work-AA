@@ -1,95 +1,45 @@
-import {
-	BufferGeometry,
-	Float32BufferAttribute,
-	OrthographicCamera,
-	Mesh
-} from 'three';
+/**
+ * Full-screen textured quad shader
+ */
 
-class Pass {
+const CopyShader = {
 
-	constructor() {
+	name: 'CopyShader',
 
-		this.isPass = true;
+	uniforms: {
 
-		// if set to true, the pass is processed by the composer
-		this.enabled = true;
+		'tDiffuse': { value: null },
+		'opacity': { value: 1.0 }
 
-		// if set to true, the pass indicates to swap read and write buffer after rendering
-		this.needsSwap = true;
+	},
 
-		// if set to true, the pass clears its buffer before rendering
-		this.clear = false;
+	vertexShader: /* glsl */`
 
-		// if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
-		this.renderToScreen = false;
+		varying vec2 vUv;
 
-	}
+		void main() {
 
-	setSize( /* width, height */ ) {}
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
-	render( /* renderer, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
+		}`,
 
-		console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
+	fragmentShader: /* glsl */`
 
-	}
+		uniform float opacity;
 
-	dispose() {}
+		uniform sampler2D tDiffuse;
 
-}
+		varying vec2 vUv;
 
-// Helper for passes that need to fill the viewport with a single quad.
+		void main() {
 
-const _camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
 
-// https://github.com/mrdoob/three.js/pull/21358
 
-class FullscreenTriangleGeometry extends BufferGeometry {
+		}`
 
-	constructor() {
+};
 
-		super();
-
-		this.setAttribute( 'position', new Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
-		this.setAttribute( 'uv', new Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
-
-	}
-
-}
-
-const _geometry = new FullscreenTriangleGeometry();
-
-class FullScreenQuad {
-
-	constructor( material ) {
-
-		this._mesh = new Mesh( _geometry, material );
-
-	}
-
-	dispose() {
-
-		this._mesh.geometry.dispose();
-
-	}
-
-	render( renderer ) {
-
-		renderer.render( this._mesh, _camera );
-
-	}
-
-	get material() {
-
-		return this._mesh.material;
-
-	}
-
-	set material( value ) {
-
-		this._mesh.material = value;
-
-	}
-
-}
-
-export { Pass, FullScreenQuad };
+export { CopyShader };
