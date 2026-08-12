@@ -1,87 +1,42 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>依赖全检（增强诊断版）</title>
-    <style>
-        body { margin:0; overflow:hidden; background:#0a0a14; font-family:monospace; color:#ccc; }
-        #report {
-            position: absolute; top:10px; left:10px; right:10px; z-index:20;
-            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px;
-            max-height: 90vh; overflow-y:auto; font-size:13px; line-height:1.4;
-            white-space: pre-wrap; word-break: break-word;
-        }
-        .ok { color:#2ecc71; }
-        .fail { color:#e74c3c; }
-        .warn { color:#f39c12; }
-    </style>
+    <meta charset="UTF-8">
+    <title>单独测试 006 EffectComposer</title>
 </head>
 <body>
-    <div id="report"></div>
+    <pre id="log"></pre>
 
     <script type="importmap">
     {
         "imports": {
             "three": "./001.js",
-            "three-mesh-bvh": "./002.js",
-            "three-bvh-csg": "./003.js",
-            "lil-gui": "./004.js",
-            "three/addons/controls/OrbitControls.js": "./005.js",
             "three/addons/": "./"
         }
     }
     </script>
 
     <script type="module">
-        const reportDiv = document.getElementById('report');
-        const log = (msg, cls = '') => {
-            const span = `<span class="${cls}">${msg}</span>`;
-            reportDiv.innerHTML += span + '\n';
+        const log = document.getElementById('log');
+        const print = (msg, color = 'white') => {
+            log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
         };
-        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-        // 测试列表（路径与名称）
-        const tests = [
-            { id:'001', path:'three', desc:'Three.js 核心' },
-            { id:'002', path:'three-mesh-bvh', desc:'MeshBVH' },
-            { id:'003', path:'three-bvh-csg', desc:'BVH-CSG' },
-            { id:'004', path:'lil-gui', desc:'lil-gui' },
-            { id:'005', path:'three/addons/controls/OrbitControls.js', desc:'OrbitControls' },
-            { id:'006', path:'three/addons/postprocessing/EffectComposer.js', desc:'EffectComposer' },
-            { id:'007', path:'three/addons/postprocessing/RenderPass.js', desc:'RenderPass' },
-            { id:'008', path:'three/addons/postprocessing/ShaderPass.js', desc:'ShaderPass' },
-            { id:'009', path:'three/addons/shaders/CopyShader.js', desc:'CopyShader' },
-            { id:'010', path:'three/addons/shaders/FXAAShader.js', desc:'FXAAShader' },
-            { id:'011', path:'three/addons/postprocessing/Pass.js', desc:'Pass (base)' },
-            { id:'012', path:'three/addons/postprocessing/MaskPass.js', desc:'MaskPass' },
-        ];
+        print('🔍 测试 001.js + 006.js (EffectComposer)\n');
 
-        log('🔍 开始逐个检查依赖文件...\n');
+        try {
+            print('⏳ 加载 Three.js...');
+            const three = await import('three');
+            print('✅ Three.js 加载成功，版本 ' + three.REVISION, 'lime');
 
-        for (let t of tests) {
-            try {
-                await import(t.path);
-                log(`✅ ${t.id} - ${t.desc} 加载成功`, 'ok');
-            } catch (err) {
-                log(`❌ ${t.id} - ${t.desc} 加载失败`, 'fail');
-                log(`   错误信息: ${err.message || err}`, 'fail');
-                // 尝试进一步诊断：检查文件是否存在
-                try {
-                    const mapPath = t.path.startsWith('three/addons/') ? '.' + t.path.substring(t.path.indexOf('/', 13)) : './' + t.path;
-                    const resp = await fetch(mapPath);
-                    if (resp.ok) {
-                        log(`   文件存在 (HTTP ${resp.status})，但模块加载失败，可能是内部语法错误或依赖缺失`, 'warn');
-                    } else {
-                        log(`   文件不存在或无法访问 (HTTP ${resp.status})，请检查路径和文件名大小写`, 'warn');
-                    }
-                } catch (fe) {
-                    log(`   无法获取文件信息: ${fe.message}`, 'warn');
-                }
-                // 继续测试下一个，不会中断
-            }
+            print('⏳ 加载 EffectComposer...');
+            const ec = await import('three/addons/postprocessing/EffectComposer.js');
+            print('✅ EffectComposer 加载成功', 'lime');
+            print('EffectComposer 导出: ' + Object.keys(ec).join(', '));
+        } catch (err) {
+            print('❌ 失败: ' + err.message, 'red');
+            console.error(err);
         }
-        log('\n🎯 诊断完成。请根据上方红字修复对应文件。');
     </script>
 </body>
 </html>
