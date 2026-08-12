@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>测试 010 (FXAAShader)</title>
+    <title>FullScreenQuad 独立测试</title>
     <style>
         body { margin: 20px; background: #111; color: #fff; font-family: monospace; }
         pre { background: #222; padding: 15px; border-radius: 5px; }
@@ -11,20 +11,14 @@
     </style>
 </head>
 <body>
-    <h2>FXAAShader 诊断</h2>
+    <h2>FullScreenQuad 诊断</h2>
     <pre id="log"></pre>
 
     <script type="importmap">
     {
         "imports": {
             "three": "./001.js",
-            "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
-            "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
-            "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
-            "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
-            "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
-            "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
-            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js"
+            "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js"
         }
     }
     </script>
@@ -35,59 +29,34 @@
             log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
         };
 
-        print('🔍 FXAAShader 测试开始\n');
-
         try {
             const THREE = await import('three');
             print('✅ Three.js 加载成功', 'ok');
 
-            const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-            print('✅ EffectComposer 加载成功', 'ok');
+            const fsq = await import('three/addons/postprocessing/FullScreenQuad.js');
+            print('模块导出: ' + Object.keys(fsq).join(', '));
 
-            const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
-            print('✅ RenderPass 加载成功', 'ok');
+            const { FullScreenQuad } = fsq;
+            if (!FullScreenQuad) throw new Error('FullScreenQuad 未导出');
 
-            const { ShaderPass } = await import('three/addons/postprocessing/ShaderPass.js');
-            print('✅ ShaderPass 加载成功', 'ok');
+            // 创建一个简单的材质
+            const material = new THREE.ShaderMaterial({
+                uniforms: {},
+                vertexShader: 'void main() { gl_Position = vec4(position, 1.0); }',
+                fragmentShader: 'void main() { gl_FragColor = vec4(1.0,0.0,0.0,1.0); }'
+            });
 
-            const { CopyShader } = await import('three/addons/shaders/CopyShader.js');
-            print('✅ CopyShader 加载成功', 'ok');
+            print('正在创建 FullScreenQuad 实例...');
+            const quad = new FullScreenQuad(material);
+            print('✅ 实例创建成功', 'ok');
 
-            const { FXAAShader } = await import('three/addons/shaders/FXAAShader.js');
-            print('✅ FXAAShader 加载成功', 'ok');
-            print('FXAAShader 内容: ' + JSON.stringify(FXAAShader).substring(0, 100) + '...');
-
-            // 验证着色器结构
-            if (!FXAAShader.uniforms || !FXAAShader.vertexShader || !FXAAShader.fragmentShader) {
-                throw new Error('FXAAShader 缺少必要的 uniforms / vertexShader / fragmentShader');
+            // 检查内部 _scene 是否已初始化
+            if (!quad._scene) {
+                throw new Error('quad._scene 未定义！请检查构造函数是否包含 this._scene = new Scene()');
             }
-            print('✅ FXAAShader 结构完整', 'ok');
+            print('quad._scene 存在: ' + (quad._scene instanceof THREE.Scene), 'ok');
+            print('✅ FullScreenQuad 内部结构正确', 'ok');
 
-            // 创建测试场景、渲染器
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(100, 100);
-
-            const composer = new EffectComposer(renderer);
-            const renderPass = new RenderPass(scene, camera);
-            composer.addPass(renderPass);
-
-            // 使用 FXAAShader 创建 ShaderPass
-            const fxaaPass = new ShaderPass(FXAAShader);
-            const pixelRatio = renderer.getPixelRatio();
-            fxaaPass.uniforms['resolution'].value.set(1 / (100 * pixelRatio), 1 / (100 * pixelRatio));
-            fxaaPass.renderToScreen = true;
-            composer.addPass(fxaaPass);
-
-            print('✅ FXAAShader 通过 ShaderPass 实例化成功', 'ok');
-
-            // 尝试渲染一帧
-            composer.render();
-            print('✅ composer.render() 执行成功', 'ok');
-
-            renderer.dispose();
-            print('\n🎉 010 (FXAAShader) 测试完全通过', 'ok');
         } catch (err) {
             print('❌ 错误: ' + err.message, 'fail');
             console.error(err);
