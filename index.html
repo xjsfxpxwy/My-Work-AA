@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <title>测试 007 (RenderPass)</title>
+    <meta charset="UTF-8">
+    <title>测试 008 (ShaderPass)</title>
 </head>
 <body>
     <pre id="log"></pre>
 
-    <!-- 精确映射，避免通配符问题 -->
     <script type="importmap">
     {
         "imports": {
             "three": "./001.js",
             "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
             "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
+            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
             "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
+            "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
+            "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
             "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
         }
     }
@@ -26,7 +28,7 @@
             log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
         };
 
-        print('🔍 测试 006 + 007 (RenderPass)\n');
+        print('🔍 测试 008 (ShaderPass) + 009 (CopyShader)\n');
 
         try {
             print('⏳ 加载 Three.js...');
@@ -40,13 +42,21 @@
             print('⏳ 加载 RenderPass...');
             const rp = await import('three/addons/postprocessing/RenderPass.js');
             print('✅ RenderPass 加载成功', 'lime');
-            print('RenderPass 导出: ' + Object.keys(rp).join(', '));
 
-            if (typeof rp.RenderPass !== 'function') {
-                throw new Error('RenderPass 不是一个构造函数');
+            print('⏳ 加载 CopyShader...');
+            const cs = await import('three/addons/shaders/CopyShader.js');
+            print('✅ CopyShader 加载成功', 'lime');
+
+            print('⏳ 加载 ShaderPass...');
+            const sp = await import('three/addons/postprocessing/ShaderPass.js');
+            print('✅ ShaderPass 加载成功', 'lime');
+            print('ShaderPass 导出: ' + Object.keys(sp).join(', '));
+
+            if (typeof sp.ShaderPass !== 'function') {
+                throw new Error('ShaderPass 不是一个构造函数');
             }
 
-            // 简单验证：创建一个场景和相机，然后尝试实例化 EffectComposer 和 RenderPass（不渲染）
+            // 实例化测试
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera();
             const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -56,9 +66,12 @@
             const renderPass = new rp.RenderPass(scene, camera);
             composer.addPass(renderPass);
 
-            print('✅ EffectComposer 和 RenderPass 实例化成功，后处理管线可以搭建', 'lime');
+            // 使用 CopyShader 创建一个简单的拷贝通道
+            const copyPass = new sp.ShaderPass(cs.CopyShader);
+            copyPass.renderToScreen = true;
+            composer.addPass(copyPass);
 
-            // 清理（可选）
+            print('✅ ShaderPass 实例化成功，后处理管线可搭建', 'lime');
             renderer.dispose();
         } catch (err) {
             print('❌ 失败: ' + err.message, 'red');
