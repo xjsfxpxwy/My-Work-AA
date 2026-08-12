@@ -1,45 +1,82 @@
-/**
- * Full-screen textured quad shader
- */
+import {
+	Color,
+	FrontSide,
+	Mesh,
+	PlaneGeometry,
+	ShaderMaterial,
+	UniformsUtils,
+	Vector2,
+	Vector3,
+	WebGLRenderer,
+	WebGLRenderTarget,
+	OrthographicCamera
+} from 'three';
 
-const CopyShader = {
+class Pass {
 
-	name: 'CopyShader',
+	constructor() {
 
-	uniforms: {
+		this.isPass = true;
+		this.enabled = true;
+		this.needsSwap = true;
+		this.clear = false;
+		this.renderToScreen = false;
 
-		'tDiffuse': { value: null },
-		'opacity': { value: 1.0 }
+	}
 
-	},
+	setSize( /* width, height */ ) {}
 
-	vertexShader: /* glsl */`
+	render( /* renderer, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
 
-		varying vec2 vUv;
+		console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
 
-		void main() {
+	}
 
-			vUv = uv;
-			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	dispose() {}
 
-		}`,
+}
 
-	fragmentShader: /* glsl */`
+class FullScreenQuad {
 
-		uniform float opacity;
+	constructor( material ) {
 
-		uniform sampler2D tDiffuse;
+		this._canvas = document.createElementNS( 'http://www.w3.org/1999/xhtml', 'canvas' );
+		this._canvas.width = 2;
+		this._canvas.height = 2;
 
-		varying vec2 vUv;
+		const context = this._canvas.getContext( 'webgl2', { antialias: false } );
+		this._renderer = new WebGLRenderer( { canvas: this._canvas, context: context } );
+		this._renderer.setPixelRatio( 1 );
+		this._renderer.setSize( 2, 2, false );
 
-		void main() {
+		this._camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
 
-			vec4 texel = texture2D( tDiffuse, vUv );
-			gl_FragColor = opacity * texel;
+		this._geometry = new PlaneGeometry( 2, 2 );
+		this._material = material;
 
+		this._mesh = new Mesh( this._geometry, this._material );
 
-		}`
+	}
 
-};
+	dispose() {
 
-export { CopyShader };
+		this._mesh.geometry.dispose();
+		this._mesh.material.dispose();
+		this._renderer.dispose();
+
+	}
+
+	render( renderer, writeBuffer, readBuffer, deltaTime, maskActive ) {
+
+		this._mesh.material = this._material;
+		this._renderer.setRenderTarget( readBuffer );
+		this._renderer.render( this._scene, this._camera );
+
+		renderer.setRenderTarget( writeBuffer );
+		renderer.render( this._scene, this._camera );
+
+	}
+
+}
+
+export { Pass, FullScreenQuad };
