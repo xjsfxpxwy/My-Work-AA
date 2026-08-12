@@ -10,6 +10,7 @@
             position: absolute; top: 10px; left: 10px; color: white;
             background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 5px;
             font-family: monospace; font-size: 14px; pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -24,11 +25,11 @@
             "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
             "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
             "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
+            "three/addons/postprocessing/Pass.js": "./postprocessing/Pass.js",
             "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
             "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
             "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
-            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
-            "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
+            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js"
         }
     }
     </script>
@@ -40,7 +41,7 @@
         try {
             // 导入所有需要的模块
             const THREE = await import('three');
-            log('Three.js ' + THREE.REVISION);
+            log('Three.js r' + THREE.REVISION + ' 加载成功 ✅');
 
             const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
             const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
@@ -88,10 +89,19 @@
             gridHelper.position.y = -1.2;
             scene.add(gridHelper);
 
-            // ---------- 后处理管线（正确用法） ----------
+            // ---------- 后处理管线（修正版） ----------
             const composer = new EffectComposer(renderer);
 
-            // 1. 必须添加 RenderPass
+            /**
+             * ✅ 关键修复：
+             * 由于最后一个 Pass (FXAA) 设置了 renderToScreen = true，
+             * 因此内置的 copyPass 不再需要。
+             * 显式禁用它可以避免内部渲染逻辑错误（如 scene.matrixWorldAutoUpdate 报错）。
+             */
+            composer.copyPass.enabled = false;
+            log('EffectComposer 实例化成功 ✅');
+
+            // 1. 必须添加 RenderPass（负责渲染主场景）
             const renderPass = new RenderPass(scene, camera);
             composer.addPass(renderPass);
 
@@ -102,15 +112,17 @@
                 1 / (innerWidth * pixelRatio),
                 1 / (innerHeight * pixelRatio)
             );
-            fxaaPass.renderToScreen = true;  // 最后一个通道需要设置为 true
+            // 告诉 composer：这是最后一个 Pass，直接输出到屏幕
+            fxaaPass.renderToScreen = true;
             composer.addPass(fxaaPass);
 
             // 验证通道配置
             log('后处理管线已就绪 ✅');
-            console.log('通道数量:', composer.passes.length);
+            console.log('--- Pass 列表 ---');
             composer.passes.forEach((pass, i) => {
-                console.log(`  Pass ${i}: ${pass.constructor.name}, enabled=${pass.enabled}`);
+                console.log(`Pass ${i}: ${pass.constructor.name}, enabled=${pass.enabled}`);
             });
+            console.log('copyPass 状态:', composer.copyPass.enabled ? '启用 (异常)' : '禁用 (正常)');
 
             // ---------- 动画循环 ----------
             function animate() {
@@ -118,6 +130,7 @@
                 mesh.rotation.x += 0.005;
                 mesh.rotation.y += 0.01;
                 // ✅ 正确：只需调用 composer.render()
+                // EffectComposer 会自动管理所有 Pass，包括内部逻辑
                 composer.render();
             }
             animate();
@@ -129,13 +142,17 @@
                 renderer.setSize(innerWidth, innerHeight);
                 composer.setSize(innerWidth, innerHeight);
                 const pr = renderer.getPixelRatio();
-                fxaaPass.uniforms['resolution'].value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr));
+                fxaaPass.uniforms['resolution'].value.set(
+                    1 / (innerWidth * pr),
+                    1 / (innerHeight * pr)
+                );
             });
 
             log('✅ 运行中 — 旋转视角查看 FXAA 效果');
+
         } catch (err) {
             log('❌ 失败: ' + err.message);
-            console.error(err);
+            console.error('详细错误:', err);
         }
     </script>
 </body>
