@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>FullScreenQuad 独立测试</title>
+    <title>FullScreenQuad 渲染测试</title>
     <style>
         body { margin: 20px; background: #111; color: #fff; font-family: monospace; }
         pre { background: #222; padding: 15px; border-radius: 5px; }
@@ -11,7 +11,7 @@
     </style>
 </head>
 <body>
-    <h2>FullScreenQuad 诊断</h2>
+    <h2>FullScreenQuad 渲染诊断</h2>
     <pre id="log"></pre>
 
     <script type="importmap">
@@ -33,30 +33,39 @@
             const THREE = await import('three');
             print('✅ Three.js 加载成功', 'ok');
 
-            const fsq = await import('three/addons/postprocessing/FullScreenQuad.js');
-            print('模块导出: ' + Object.keys(fsq).join(', '));
-
-            const { FullScreenQuad } = fsq;
+            const fsqModule = await import('three/addons/postprocessing/FullScreenQuad.js');
+            const { FullScreenQuad } = fsqModule;
             if (!FullScreenQuad) throw new Error('FullScreenQuad 未导出');
 
-            // 创建一个简单的材质
+            // 创建一个简单的 ShaderMaterial
             const material = new THREE.ShaderMaterial({
                 uniforms: {},
                 vertexShader: 'void main() { gl_Position = vec4(position, 1.0); }',
-                fragmentShader: 'void main() { gl_FragColor = vec4(1.0,0.0,0.0,1.0); }'
+                fragmentShader: 'void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }'
             });
 
-            print('正在创建 FullScreenQuad 实例...');
             const quad = new FullScreenQuad(material);
-            print('✅ 实例创建成功', 'ok');
+            print('✅ FullScreenQuad 实例创建成功', 'ok');
 
-            // 检查内部 _scene 是否已初始化
+            // 检查 _scene 是否存在
             if (!quad._scene) {
-                throw new Error('quad._scene 未定义！请检查构造函数是否包含 this._scene = new Scene()');
+                throw new Error('❌ quad._scene 未定义！请更新 FullScreenQuad.js，在构造函数中添加 this._scene = new Scene()');
             }
             print('quad._scene 存在: ' + (quad._scene instanceof THREE.Scene), 'ok');
-            print('✅ FullScreenQuad 内部结构正确', 'ok');
 
+            // 创建一个临时渲染器和目标缓冲区，尝试执行 render
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(16, 16);
+            const target = new THREE.WebGLRenderTarget(16, 16);
+
+            // 尝试调用 render（模拟 EffectComposer 内部调用）
+            print('尝试调用 quad.render()...');
+            quad.render(renderer, target, target, 0.016, false);
+            print('✅ quad.render() 执行成功，未崩溃', 'ok');
+
+            renderer.dispose();
+            target.dispose();
+            print('\n🎉 FullScreenQuad 完全正常', 'ok');
         } catch (err) {
             print('❌ 错误: ' + err.message, 'fail');
             console.error(err);
