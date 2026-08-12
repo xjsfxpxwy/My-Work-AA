@@ -1,6 +1,5 @@
 import {
 	Color,
-	FrontSide,
 	Mesh,
 	PlaneGeometry,
 	ShaderMaterial,
@@ -9,7 +8,8 @@ import {
 	Vector3,
 	WebGLRenderer,
 	WebGLRenderTarget,
-	OrthographicCamera
+	OrthographicCamera,
+	Scene
 } from 'three';
 
 class Pass {
@@ -17,17 +17,9 @@ class Pass {
 	constructor() {
 
 		this.isPass = true;
-
-		// if set to true, the pass is processed by the composer
 		this.enabled = true;
-
-		// if set to true, the pass indicates to swap read and write buffer after rendering
 		this.needsSwap = true;
-
-		// if set to true, the pass clears its buffer before rendering
 		this.clear = false;
-
-		// if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
 		this.renderToScreen = false;
 
 	}
@@ -44,8 +36,6 @@ class Pass {
 
 }
 
-// Helper for passes that need to fill the viewport with a single quad.
-
 class FullScreenQuad {
 
 	constructor( material ) {
@@ -60,6 +50,7 @@ class FullScreenQuad {
 		this._renderer.setSize( 2, 2, false );
 
 		this._camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this._scene = new Scene();   // ← 关键修复：创建内部场景
 
 		this._geometry = new PlaneGeometry( 2, 2 );
 		this._material = material;
