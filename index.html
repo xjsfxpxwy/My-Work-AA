@@ -2,181 +2,94 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>12个依赖最终安全测试</title>
+    <title>测试 010 (FXAAShader)</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #0a0a14; font-family: monospace; color: #ccc; }
-        #report {
-            position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20;
-            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px;
-            max-height: 90vh; overflow-y: auto; font-size: 13px; line-height: 1.5;
-            white-space: pre-wrap; word-break: break-word;
-        }
+        body { margin: 20px; background: #111; color: #fff; font-family: monospace; }
+        pre { background: #222; padding: 15px; border-radius: 5px; }
         .ok { color: #2ecc71; }
         .fail { color: #e74c3c; }
-        .warn { color: #f39c12; }
     </style>
 </head>
 <body>
-    <div id="report"></div>
+    <h2>FXAAShader 诊断</h2>
+    <pre id="log"></pre>
 
     <script type="importmap">
     {
         "imports": {
             "three": "./001.js",
-            "three-mesh-bvh": "./002.js",
-            "three-bvh-csg": "./003.js",
-            "lil-gui": "./004.js",
-            "three/addons/controls/OrbitControls.js": "./005.js",
             "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
-            "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
-            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
             "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
             "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
             "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
             "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
-            "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
+            "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
+            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js"
         }
     }
     </script>
 
     <script type="module">
-        const report = document.getElementById('report');
-        const log = (msg, cls = '') => {
-            report.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+        const log = document.getElementById('log');
+        const print = (msg, color = 'white') => {
+            log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
         };
 
-        // 依赖列表
-        const modules = [
-            { id: '001', path: 'three', desc: 'Three.js' },
-            { id: '002', path: 'three-mesh-bvh', desc: 'MeshBVH' },
-            { id: '003', path: 'three-bvh-csg', desc: 'BVH-CSG' },
-            { id: '004', path: 'lil-gui', desc: 'lil-gui' },
-            { id: '005', path: 'three/addons/controls/OrbitControls.js', desc: 'OrbitControls' },
-            { id: '006', path: 'three/addons/postprocessing/EffectComposer.js', desc: 'EffectComposer' },
-            { id: '007', path: 'three/addons/postprocessing/RenderPass.js', desc: 'RenderPass' },
-            { id: '008', path: 'three/addons/postprocessing/ShaderPass.js', desc: 'ShaderPass' },
-            { id: '009', path: 'three/addons/shaders/CopyShader.js', desc: 'CopyShader' },
-            { id: '010', path: 'three/addons/shaders/FXAAShader.js', desc: 'FXAAShader' },
-            { id: '011', path: 'three/addons/postprocessing/FullScreenQuad.js', desc: 'Pass+FullScreenQuad' },
-            { id: '012', path: 'three/addons/postprocessing/MaskPass.js', desc: 'MaskPass' },
-        ];
-
-        log('🔍 开始逐步加载 12 个依赖...\n');
-
-        const deps = {};
-
-        for (const mod of modules) {
-            try {
-                log(`⏳ 加载 ${mod.id} (${mod.desc})...`);
-                deps[mod.id] = await import(mod.path);
-                log(`✅ ${mod.id} 加载成功`, 'ok');
-            } catch (err) {
-                log(`❌ ${mod.id} 加载失败: ${err.message}`, 'fail');
-                throw err; // 终止，不再继续
-            }
-        }
-
-        log('\n🎉 所有模块加载完成，开始构建场景...\n');
-
-        // 提取常用变量
-        const THREE = deps['001'];
-        const { EffectComposer } = deps['006'];
-        const { RenderPass } = deps['007'];
-        const { ShaderPass } = deps['008'];
-        const { CopyShader } = deps['009'];
-        const { FXAAShader } = deps['010'];
-        const { OrbitControls } = deps['005'];
-        const { MeshBVH } = deps['002'];
-        const { Brush, Evaluator, SUBTRACTION } = deps['003'];
-        const GUI = deps['004'].default;
+        print('🔍 FXAAShader 测试开始\n');
 
         try {
-            // 1. 创建场景 (注意要确保使用 THREE.Scene)
-            log('创建场景...');
+            const THREE = await import('three');
+            print('✅ Three.js 加载成功', 'ok');
+
+            const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
+            print('✅ EffectComposer 加载成功', 'ok');
+
+            const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
+            print('✅ RenderPass 加载成功', 'ok');
+
+            const { ShaderPass } = await import('three/addons/postprocessing/ShaderPass.js');
+            print('✅ ShaderPass 加载成功', 'ok');
+
+            const { CopyShader } = await import('three/addons/shaders/CopyShader.js');
+            print('✅ CopyShader 加载成功', 'ok');
+
+            const { FXAAShader } = await import('three/addons/shaders/FXAAShader.js');
+            print('✅ FXAAShader 加载成功', 'ok');
+            print('FXAAShader 内容: ' + JSON.stringify(FXAAShader).substring(0, 100) + '...');
+
+            // 验证着色器结构
+            if (!FXAAShader.uniforms || !FXAAShader.vertexShader || !FXAAShader.fragmentShader) {
+                throw new Error('FXAAShader 缺少必要的 uniforms / vertexShader / fragmentShader');
+            }
+            print('✅ FXAAShader 结构完整', 'ok');
+
+            // 创建测试场景、渲染器
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111122);
-            if (!scene) throw new Error('Scene 创建失败');
-            log('✅ 场景创建成功', 'ok');
-
-            // 2. 创建相机
-            const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
-            camera.position.set(4, 2.5, 5);
-            if (!camera) throw new Error('Camera 创建失败');
-
-            // 3. 创建渲染器
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(innerWidth, innerHeight);
-            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-            if (!renderer) throw new Error('Renderer 创建失败');
-            document.body.appendChild(renderer.domElement);
+            renderer.setSize(100, 100);
 
-            // 4. 控制器
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 0, 0);
-            controls.update();
-
-            // 5. 光照
-            scene.add(new THREE.AmbientLight(0x404060, 0.5));
-            const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-            dirLight.position.set(3, 6, 4);
-            scene.add(dirLight);
-
-            // 6. 简单几何体（用于视觉确认）
-            const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            const sphereGeo = new THREE.SphereGeometry(0.9, 32, 32);
-            boxGeo.boundsTree = new MeshBVH(boxGeo);
-            sphereGeo.boundsTree = new MeshBVH(sphereGeo);
-            const boxBrush = new Brush(boxGeo);
-            const sphereBrush = new Brush(sphereGeo);
-            sphereBrush.position.set(0.7, 0.7, 0.7);
-            sphereBrush.updateMatrixWorld();
-            const evaluator = new Evaluator();
-            let result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
-            scene.add(result);
-            result.material = new THREE.MeshStandardMaterial({ color: '#4cc9f0', roughness: 0.35 });
-
-            // 7. 后处理管线
-            log('构建后处理管线...');
             const composer = new EffectComposer(renderer);
-            if (!composer) throw new Error('EffectComposer 创建失败');
-
             const renderPass = new RenderPass(scene, camera);
-            if (!renderPass) throw new Error('RenderPass 创建失败');
             composer.addPass(renderPass);
 
+            // 使用 FXAAShader 创建 ShaderPass
             const fxaaPass = new ShaderPass(FXAAShader);
-            if (!fxaaPass) throw new Error('FXAAShaderPass 创建失败');
             const pixelRatio = renderer.getPixelRatio();
-            fxaaPass.uniforms['resolution'].value.set(
-                1 / (innerWidth * pixelRatio),
-                1 / (innerHeight * pixelRatio)
-            );
+            fxaaPass.uniforms['resolution'].value.set(1 / (100 * pixelRatio), 1 / (100 * pixelRatio));
             fxaaPass.renderToScreen = true;
             composer.addPass(fxaaPass);
-            log('✅ 后处理管线构建成功', 'ok');
 
-            // 8. 动画循环
-            function animate() {
-                requestAnimationFrame(animate);
-                result.rotation.y += 0.005;
-                controls.update();
-                composer.render();  // 使用 composer 渲染
-            }
-            animate();
+            print('✅ FXAAShader 通过 ShaderPass 实例化成功', 'ok');
 
-            window.addEventListener('resize', () => {
-                camera.aspect = innerWidth / innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-                composer.setSize(innerWidth, innerHeight);
-                const pr = renderer.getPixelRatio();
-                fxaaPass.uniforms['resolution'].value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr));
-            });
+            // 尝试渲染一帧
+            composer.render();
+            print('✅ composer.render() 执行成功', 'ok');
 
-            log('🚀 12 个依赖全部工作正常，场景运行中', 'ok');
+            renderer.dispose();
+            print('\n🎉 010 (FXAAShader) 测试完全通过', 'ok');
         } catch (err) {
-            log(`❌ 场景构建失败: ${err.message}`, 'fail');
+            print('❌ 错误: ' + err.message, 'fail');
             console.error(err);
         }
     </script>
