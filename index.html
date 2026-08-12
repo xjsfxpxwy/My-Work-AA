@@ -3,152 +3,24 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>依赖全检：001‑012.js（完整后处理链）</title>
+    <title>依赖全检 v3 · 精确映射版</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #0d0d1a;
+        body { margin:0; overflow:hidden; background:#0a0a14; font-family:monospace; }
+        #report {
+            position: absolute; top:10px; left:10px; right:10px; z-index:20;
+            background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px;
+            max-height: 92vh; overflow-y:auto; font-size:13px; line-height:1.5;
+            white-space: pre-wrap; word-break: break-word; color:#ccc;
         }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            z-index: 10;
-            font-size: 14px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            max-width: 70%;
-            pointer-events: none;
-        }
-        #info .badge {
-            display: inline-block;
-            background: #2ecc71;
-            color: #fff;
-            border-radius: 12px;
-            padding: 0 10px;
-            font-size: 12px;
-            line-height: 22px;
-            margin-left: 8px;
-            font-weight: 600;
-        }
-        #info .badge.error {
-            background: #e74c3c;
-        }
-        #status-dots {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px 18px;
-            border-radius: 20px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            max-width: calc(100% - 40px);
-        }
-        .dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            display: inline-block;
-            transition: all 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            position: relative;
-        }
-        .dot.loaded {
-            background: #2ecc71;
-            box-shadow: 0 0 12px rgba(46, 204, 113, 0.6);
-        }
-        .dot.pending {
-            background: #f39c12;
-            animation: pulse 1.2s ease-in-out infinite;
-        }
-        .dot.error {
-            background: #e74c3c;
-            box-shadow: 0 0 12px rgba(231, 76, 60, 0.6);
-            animation: none;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-        #gui-tip {
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 13px;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 6px 18px;
-            border-radius: 20px;
-            backdrop-filter: blur(4px);
-            pointer-events: none;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        #error-console {
-            position: absolute;
-            bottom: 80px;
-            left: 20px;
-            right: 20px;
-            max-width: 650px;
-            background: rgba(200, 0, 0, 0.9);
-            color: #fff;
-            padding: 12px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            z-index: 20;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            display: none;
-        }
-        #error-console.visible {
-            display: block;
-        }
-        @media (max-width: 720px) {
-            #info { font-size: 12px; padding: 8px 14px; top: 10px; left: 10px; }
-            #status-dots { top: 10px; right: 10px; padding: 6px 12px; gap: 6px; }
-            .dot { width: 12px; height: 12px; }
-            #gui-tip { font-size: 11px; bottom: 14px; }
-        }
+        .ok { color:#2ecc71; }
+        .fail { color:#e74c3c; }
+        .info { color:#4cc9f0; }
     </style>
 </head>
 <body>
-    <div id="info">⏳ 正在加载 12 个依赖...</div>
-    <div id="status-dots">
-        <!-- 核心库 -->
-        <span class="dot pending" id="dot-001" title="001.js (Three.js)"></span>
-        <span class="dot pending" id="dot-002" title="002.js (MeshBVH)"></span>
-        <span class="dot pending" id="dot-003" title="003.js (BVH‑CSG)"></span>
-        <span class="dot pending" id="dot-004" title="004.js (lil‑gui)"></span>
-        <span class="dot pending" id="dot-005" title="005.js (OrbitControls)"></span>
-        <!-- 后处理链 -->
-        <span class="dot pending" id="dot-006" title="006 (EffectComposer)"></span>
-        <span class="dot pending" id="dot-007" title="007 (RenderPass)"></span>
-        <span class="dot pending" id="dot-008" title="008 (ShaderPass)"></span>
-        <span class="dot pending" id="dot-009" title="009 (CopyShader)"></span>
-        <span class="dot pending" id="dot-010" title="010 (FXAAShader)"></span>
-        <span class="dot pending" id="dot-011" title="011 (Pass)"></span>
-        <span class="dot pending" id="dot-012" title="012 (MaskPass)"></span>
-    </div>
-    <div id="error-console"></div>
-    <div id="gui-tip">🖱 拖拽旋转 · 滚轮缩放 · 右键平移</div>
+    <div id="report"></div>
 
-    <!-- 导入映射：核心编号 + 后处理目录映射 -->
+    <!-- 精确映射，一个文件一个入口，彻底避免通配符歧义 -->
     <script type="importmap">
     {
         "imports": {
@@ -157,262 +29,151 @@
             "three-bvh-csg": "./003.js",
             "lil-gui": "./004.js",
             "three/addons/controls/OrbitControls.js": "./005.js",
-            "three/addons/": "./"
+            "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
+            "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
+            "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
+            "three/addons/postprocessing/Pass.js": "./postprocessing/Pass.js",
+            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
+            "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
+            "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js"
         }
     }
     </script>
 
     <script type="module">
-        // ========== 1. 界面元素 ==========
-        const infoDiv = document.getElementById('info');
-        const errorConsole = document.getElementById('error-console');
-        const dotIds = ['001','002','003','004','005','006','007','008','009','010','011','012'];
-        const dots = {};
-        dotIds.forEach(id => { dots[id] = document.getElementById(`dot-${id}`); });
+        const report = document.getElementById('report');
+        const log = (msg, cls = '') => {
+            report.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+        };
 
-        function setDotStatus(id, status) {
-            const dot = dots[id];
-            if (!dot) return;
-            dot.className = `dot ${status}`;
-        }
+        // 动态加载测试
+        const modules = [
+            { id:'001', path:'three', desc:'Three.js 核心' },
+            { id:'002', path:'three-mesh-bvh', desc:'MeshBVH' },
+            { id:'003', path:'three-bvh-csg', desc:'BVH‑CSG' },
+            { id:'004', path:'lil-gui', desc:'lil‑gui' },
+            { id:'005', path:'three/addons/controls/OrbitControls.js', desc:'OrbitControls' },
+            { id:'006', path:'three/addons/postprocessing/EffectComposer.js', desc:'EffectComposer' },
+            { id:'007', path:'three/addons/postprocessing/RenderPass.js', desc:'RenderPass' },
+            { id:'008', path:'three/addons/postprocessing/ShaderPass.js', desc:'ShaderPass' },
+            { id:'009', path:'three/addons/shaders/CopyShader.js', desc:'CopyShader' },
+            { id:'010', path:'three/addons/shaders/FXAAShader.js', desc:'FXAAShader' },
+            { id:'011', path:'three/addons/postprocessing/Pass.js', desc:'Pass (含 FullScreenQuad)' },
+            { id:'012', path:'three/addons/postprocessing/MaskPass.js', desc:'MaskPass' },
+        ];
 
-        function showError(msg) {
-            errorConsole.textContent = msg;
-            errorConsole.classList.add('visible');
-            infoDiv.innerHTML = `❌ 依赖加载失败 — 详情见下方`;
-            infoDiv.style.borderColor = 'rgba(255,0,0,0.4)';
-        }
+        log('🔍 开始逐个检查依赖...\n');
 
-        // ========== 2. 按顺序动态加载全部依赖 ==========
-        async function loadAllDependencies() {
-            const deps = {};
-
-            // --- 核心库 (001‑005) ---
-            setDotStatus('001', 'pending');
-            deps.THREE = await import('three');
-            setDotStatus('001', 'loaded');
-            infoDiv.textContent = '✅ 001.js (Three.js)';
-
-            setDotStatus('002', 'pending');
-            deps.MeshBVH = (await import('three-mesh-bvh')).MeshBVH;
-            setDotStatus('002', 'loaded');
-
-            setDotStatus('003', 'pending');
-            const csg = await import('three-bvh-csg');
-            deps.Brush = csg.Brush;
-            deps.Evaluator = csg.Evaluator;
-            deps.SUBTRACTION = csg.SUBTRACTION;
-            setDotStatus('003', 'loaded');
-
-            setDotStatus('004', 'pending');
-            deps.GUI = (await import('lil-gui')).default;
-            setDotStatus('004', 'loaded');
-
-            setDotStatus('005', 'pending');
-            deps.OrbitControls = (await import('three/addons/controls/OrbitControls.js')).OrbitControls;
-            setDotStatus('005', 'loaded');
-
-            // --- 后处理链 (006‑012) ---
-            // 006 EffectComposer
-            setDotStatus('006', 'pending');
+        const loaded = {};
+        for (const m of modules) {
             try {
-                deps.EffectComposer = (await import('three/addons/postprocessing/EffectComposer.js')).EffectComposer;
-                setDotStatus('006', 'loaded');
-            } catch (e) { setDotStatus('006', 'error'); throw e; }
-
-            // 007 RenderPass
-            setDotStatus('007', 'pending');
-            try {
-                deps.RenderPass = (await import('three/addons/postprocessing/RenderPass.js')).RenderPass;
-                setDotStatus('007', 'loaded');
-            } catch (e) { setDotStatus('007', 'error'); throw e; }
-
-            // 008 ShaderPass
-            setDotStatus('008', 'pending');
-            try {
-                deps.ShaderPass = (await import('three/addons/postprocessing/ShaderPass.js')).ShaderPass;
-                setDotStatus('008', 'loaded');
-            } catch (e) { setDotStatus('008', 'error'); throw e; }
-
-            // 009 CopyShader
-            setDotStatus('009', 'pending');
-            try {
-                deps.CopyShader = (await import('three/addons/shaders/CopyShader.js')).CopyShader;
-                setDotStatus('009', 'loaded');
-            } catch (e) { setDotStatus('009', 'error'); throw e; }
-
-            // 010 FXAAShader
-            setDotStatus('010', 'pending');
-            try {
-                deps.FXAAShader = (await import('three/addons/shaders/FXAAShader.js')).FXAAShader;
-                setDotStatus('010', 'loaded');
-            } catch (e) { setDotStatus('010', 'error'); throw e; }
-
-            // 011 Pass
-            setDotStatus('011', 'pending');
-            try {
-                await import('three/addons/postprocessing/Pass.js'); // 仅验证可导入，不需要具体导出
-                setDotStatus('011', 'loaded');
-            } catch (e) { setDotStatus('011', 'error'); throw e; }
-
-            // 012 MaskPass
-            setDotStatus('012', 'pending');
-            try {
-                await import('three/addons/postprocessing/MaskPass.js');
-                setDotStatus('012', 'loaded');
-            } catch (e) { setDotStatus('012', 'error'); throw e; }
-
-            infoDiv.innerHTML = `✅ 全部 12 个依赖加载成功！<span class="badge">Three.js ${deps.THREE.REVISION}</span>`;
-            return deps;
-        }
-
-        // ========== 3. 场景初始化 ==========
-        async function initScene(deps) {
-            const { THREE, MeshBVH, Brush, Evaluator, SUBTRACTION, GUI, OrbitControls,
-                    EffectComposer, RenderPass, ShaderPass, CopyShader, FXAAShader } = deps;
-
-            // 基础场景
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0d0d1a);
-            const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 1000);
-            camera.position.set(4, 2.5, 5);
-            const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-            renderer.setSize(innerWidth, innerHeight);
-            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
-            document.body.appendChild(renderer.domElement);
-
-            // 控制器
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 0, 0);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.08;
-            controls.update();
-
-            // 光照
-            scene.add(new THREE.AmbientLight(0x404060, 0.5));
-            const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362d59, 0.8);
-            scene.add(hemi);
-            const mainLight = new THREE.DirectionalLight(0xffeedd, 2.2);
-            mainLight.position.set(3, 6, 4);
-            mainLight.castShadow = true;
-            mainLight.shadow.mapSize.set(1024,1024);
-            scene.add(mainLight);
-            scene.add(new THREE.DirectionalLight(0x8888ff, 0.6).position.set(-3,1,-2));
-            scene.add(new THREE.DirectionalLight(0xffffff, 0.4).position.set(0,-2,4));
-
-            // 网格与装饰
-            const grid = new THREE.GridHelper(6, 24, 0x8888cc, 0x444466);
-            grid.position.y = -1.2;
-            scene.add(grid);
-
-            // 布尔运算物体
-            const boxGeo = new THREE.BoxGeometry(1.6,1.6,1.6);
-            const sphereGeo = new THREE.SphereGeometry(0.95,48,48);
-            boxGeo.boundsTree = new MeshBVH(boxGeo);
-            sphereGeo.boundsTree = new MeshBVH(sphereGeo);
-            const boxBrush = new Brush(boxGeo);
-            const sphereBrush = new Brush(sphereGeo);
-            sphereBrush.position.set(0.75,0.75,0.75);
-            sphereBrush.updateMatrixWorld();
-            const evaluator = new Evaluator();
-            let result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
-            scene.add(result);
-            result.material = new THREE.MeshStandardMaterial({ color: '#4cc9f0', roughness: 0.35, metalness: 0.15 });
-
-            // 星星背景
-            const starsGeo = new THREE.BufferGeometry();
-            const pos = new Float32Array(600*3);
-            for (let i=0;i<pos.length;i++) pos[i] = (Math.random()-0.5)*60;
-            starsGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
-            const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({
-                color: 0x6688cc, size: 0.06, blending: THREE.AdditiveBlending, sizeAttenuation: true
-            }));
-            scene.add(stars);
-
-            // --- 后处理管线 ---
-            let composer, fxaaPass;
-            try {
-                composer = new EffectComposer(renderer);
-                const renderPass = new RenderPass(scene, camera);
-                composer.addPass(renderPass);
-                fxaaPass = new ShaderPass(FXAAShader);
-                const pr = renderer.getPixelRatio();
-                fxaaPass.uniforms['resolution'].value.set(1/(innerWidth*pr), 1/(innerHeight*pr));
-                fxaaPass.renderToScreen = true;
-                composer.addPass(fxaaPass);
-                console.log('✨ 后处理管线 (EffectComposer + FXAA) 已激活');
-            } catch (e) {
-                console.warn('后处理未启用:', e.message);
-            }
-
-            // GUI
-            const settings = { speed: 0.006, color: '#4cc9f0', roughness: 0.35, metalness: 0.15, wireframe: false };
-            const gui = new GUI({ title: '控制面板', width: 300 });
-            const folder = gui.addFolder('材质');
-            folder.add(settings, 'speed', 0, 0.03).name('旋转速度');
-            folder.addColor(settings, 'color').name('颜色').onChange(v => result.material.color.set(v));
-            folder.add(settings, 'roughness', 0, 1).name('粗糙度').onChange(v => result.material.roughness = v);
-            folder.add(settings, 'metalness', 0, 1).name('金属感').onChange(v => result.material.metalness = v);
-            folder.add(settings, 'wireframe').name('线框').onChange(v => result.material.wireframe = v);
-            folder.open();
-            const infoFolder = gui.addFolder('系统');
-            const infoData = { three: THREE.REVISION, loaded: '12/12', composer: composer ? '✅ 已启用' : '⚠️ 未启用' };
-            infoFolder.add(infoData, 'three').name('Three.js').disable();
-            infoFolder.add(infoData, 'loaded').name('依赖').disable();
-            infoFolder.add(infoData, 'composer').name('后处理').disable();
-            infoFolder.open();
-
-            // 动画
-            function animate() {
-                requestAnimationFrame(animate);
-                result.rotation.y += settings.speed;
-                stars.rotation.y += 0.00008;
-                controls.update();
-                if (composer) {
-                    composer.render();
-                } else {
-                    renderer.render(scene, camera);
-                }
-            }
-            animate();
-
-            window.addEventListener('resize', () => {
-                camera.aspect = innerWidth / innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-                if (composer) {
-                    composer.setSize(innerWidth, innerHeight);
-                    if (fxaaPass) {
-                        const pr = renderer.getPixelRatio();
-                        fxaaPass.uniforms['resolution'].value.set(1/(innerWidth*pr), 1/(innerHeight*pr));
-                    }
-                }
-            });
-
-            errorConsole.classList.remove('visible');
-            infoDiv.innerHTML = `✅ 全部 12 个依赖加载成功！<span class="badge">Three.js ${THREE.REVISION}</span>`;
-            infoDiv.style.borderColor = 'rgba(46, 204, 113, 0.3)';
-            console.log('🚀 完整依赖测试通过，后处理' + (composer ? '已' : '未') + '启用');
-        }
-
-        // ========== 4. 主流程 ==========
-        (async () => {
-            try {
-                const deps = await loadAllDependencies();
-                await initScene(deps);
+                const mod = await import(m.path);
+                loaded[m.id] = mod;
+                log(`✅ ${m.id} - ${m.desc} 加载成功`, 'ok');
             } catch (err) {
-                console.error('初始化失败:', err);
-                showError(err.message || err);
+                log(`❌ ${m.id} - ${m.desc} 加载失败`, 'fail');
+                log(`   ${err.message || err}`, 'fail');
+                // 立即终止，因为后续模块依赖前面
+                log('\n⛔ 诊断停止，请修复上方红色错误后再试。');
+                return;
             }
-        })();
+        }
 
-        window.addEventListener('error', (e) => {
-            if (!errorConsole.classList.contains('visible')) showError(e.message || '未知错误');
+        log('\n✨ 全部 12 个依赖加载成功！正在初始化场景…\n', 'info');
+
+        // 提取变量
+        const THREE = loaded['001'];
+        const MeshBVH = loaded['002'].MeshBVH;
+        const { Brush, Evaluator, SUBTRACTION } = loaded['003'];
+        const GUI = loaded['004'].default;
+        const OrbitControls = loaded['005'].OrbitControls;
+        const EffectComposer = loaded['006'].EffectComposer;
+        const RenderPass = loaded['007'].RenderPass;
+        const ShaderPass = loaded['008'].ShaderPass;
+        const FXAAShader = loaded['010'].FXAAShader;
+
+        // ---- 场景 ----
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0d0d1a);
+        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
+        camera.position.set(4, 2.5, 5);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.update();
+
+        scene.add(new THREE.AmbientLight(0x404060, 0.5));
+        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362d59, 0.8);
+        scene.add(hemi);
+        const mainLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+        mainLight.position.set(3, 6, 4);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.set(1024, 1024);
+        scene.add(mainLight);
+
+        // 布尔运算物体
+        const boxGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+        const sphereGeo = new THREE.SphereGeometry(0.95, 48, 48);
+        boxGeo.boundsTree = new MeshBVH(boxGeo);
+        sphereGeo.boundsTree = new MeshBVH(sphereGeo);
+        const boxBrush = new Brush(boxGeo);
+        const sphereBrush = new Brush(sphereGeo);
+        sphereBrush.position.set(0.75, 0.75, 0.75);
+        sphereBrush.updateMatrixWorld();
+        const evaluator = new Evaluator();
+        let result = evaluator.evaluate(boxBrush, sphereBrush, SUBTRACTION);
+        result.material = new THREE.MeshStandardMaterial({ color: '#4cc9f0', roughness: 0.35, metalness: 0.15 });
+        scene.add(result);
+
+        // 后处理
+        let composer;
+        try {
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            const fxaaPass = new ShaderPass(FXAAShader);
+            const pr = renderer.getPixelRatio();
+            fxaaPass.uniforms['resolution'].value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr));
+            fxaaPass.renderToScreen = true;
+            composer.addPass(fxaaPass);
+            log('✨ 后处理 (FXAA) 已激活', 'ok');
+        } catch (e) {
+            log('⚠️ 后处理未启用: ' + e.message, 'info');
+        }
+
+        // GUI
+        const settings = { speed: 0.006 };
+        const gui = new GUI({ title: '控制', width: 280 });
+        gui.add(settings, 'speed', 0, 0.03).name('旋转速度');
+        gui.add({ info: '全部依赖正常' }, 'info').name('状态').disable();
+
+        // 动画
+        function animate() {
+            requestAnimationFrame(animate);
+            result.rotation.y += settings.speed;
+            controls.update();
+            if (composer) composer.render();
+            else renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+            if (composer) composer.setSize(innerWidth, innerHeight);
         });
+
+        log('🚀 场景运行中，请查看左上角面板。', 'info');
     </script>
 </body>
 </html>
