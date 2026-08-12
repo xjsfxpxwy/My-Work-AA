@@ -6,6 +6,7 @@ import {
 	UniformsUtils,
 	Vector2,
 	Vector3,
+	WebGLRenderer,
 	WebGLRenderTarget
 } from 'three';
 
@@ -22,7 +23,7 @@ class FullScreenQuad {
 		this._renderer.setPixelRatio( 1 );
 		this._renderer.setSize( 2, 2, false );
 
-		this._camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this._camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
 
 		this._geometry = new PlaneGeometry( 2, 2 );
 		this._material = material;
@@ -45,7 +46,6 @@ class FullScreenQuad {
 		this._renderer.setRenderTarget( readBuffer );
 		this._renderer.render( this._scene, this._camera );
 
-		// Copy the result to the write buffer
 		renderer.setRenderTarget( writeBuffer );
 		renderer.render( this._scene, this._camera );
 
