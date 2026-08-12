@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>EffectComposer.copyPass 诊断</title>
+    <title>最终诊断：copyPass._scene</title>
     <style>
         body { margin: 20px; background: #111; color: #fff; font-family: monospace; }
         pre { background: #222; padding: 15px; border-radius: 5px; }
@@ -11,7 +11,7 @@
     </style>
 </head>
 <body>
-    <h2>EffectComposer.copyPass 诊断</h2>
+    <h2>最终诊断：copyPass 内部 _scene</h2>
     <pre id="log"></pre>
 
     <script type="importmap">
@@ -20,12 +20,7 @@
             "three": "./001.js",
             "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
             "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
-            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
-            "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
-            "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
-            "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
-            "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
-            "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
+            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js"
         }
     }
     </script>
@@ -40,53 +35,66 @@
             const THREE = await import('three');
             print('✅ Three.js 加载成功', 'ok');
 
-            const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-            print('✅ EffectComposer 加载成功', 'ok');
+            const ecModule = await import('three/addons/postprocessing/EffectComposer.js');
+            const { EffectComposer } = ecModule;
+            print('EffectComposer 导入成功', 'ok');
 
-            const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
-            print('✅ RenderPass 加载成功', 'ok');
+            // 直接导入 FullScreenQuad 以查看其结构
+            const fsqModule = await import('three/addons/postprocessing/FullScreenQuad.js');
+            const { FullScreenQuad } = fsqModule;
+            print('FullScreenQuad 导入成功', 'ok');
 
-            // 创建最小场景
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111122);
-            const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            // 创建一个简单的 ShaderMaterial 供实例化
+            const material = new THREE.ShaderMaterial({
+                uniforms: {},
+                vertexShader: 'void main() { gl_Position = vec4(position, 1.0); }',
+                fragmentShader: 'void main() { gl_FragColor = vec4(1.0,0.0,0.0,1.0); }'
+            });
+
+            // 手动创建一个 FullScreenQuad 实例，查看 _scene
+            const manualQuad = new FullScreenQuad(material);
+            print('手动创建的 FullScreenQuad._scene: ' + (manualQuad._scene instanceof THREE.Scene), 'ok');
+
+            // 创建 EffectComposer
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(100, 100);
-            document.body.appendChild(renderer.domElement);
-
-            // 创建 EffectComposer，但不添加任何 pass
             const composer = new EffectComposer(renderer);
-            print('✅ EffectComposer 实例化成功', 'ok');
 
-            // 检查 copyPass 是否正常
+            // 检查 copyPass 和它的 _scene
             if (!composer.copyPass) {
-                throw new Error('composer.copyPass 未定义');
+                throw new Error('composer.copyPass 不存在');
             }
             print('composer.copyPass 存在', 'ok');
 
-            // 尝试手动调用 copyPass.render()（模拟内部缓冲区交换）
-            // 需要两个 WebGLRenderTarget 作为读写缓冲区
+            // copyPass 内部是一个 ShaderPass，它的 .fsQuad 才是 FullScreenQuad 实例
+            if (composer.copyPass.fsQuad) {
+                const fsq = composer.copyPass.fsQuad;
+                print('fsQuad 存在', 'ok');
+                print('fsQuad._scene: ' + (fsq._scene instanceof THREE.Scene), 'ok');
+                if (!fsq._scene) {
+                    throw new Error('❌ fsQuad._scene 未定义！请重新替换 postprocessing/FullScreenQuad.js');
+                }
+            } else {
+                print('copyPass.fsQuad 不存在，尝试访问 .quad...', 'warn');
+                if (composer.copyPass.quad) {
+                    print('quad._scene: ' + (composer.copyPass.quad._scene instanceof THREE.Scene), 'ok');
+                } else {
+                    print('无法找到 FullScreenQuad 实例，EffectComposer 内部结构可能异常。');
+                }
+            }
+
+            // 尝试执行 copyPass.render
             const size = renderer.getSize(new THREE.Vector2());
             const rt1 = new THREE.WebGLRenderTarget(size.width * renderer.getPixelRatio(), size.height * renderer.getPixelRatio(), { type: THREE.HalfFloatType });
             const rt2 = rt1.clone();
-
-            print('尝试调用 composer.copyPass.render()...');
+            print('尝试 composer.copyPass.render()...');
             composer.copyPass.render(renderer, rt1, rt2, 0.016, false);
-            print('✅ copyPass.render() 执行成功，未崩溃', 'ok');
+            print('✅ copyPass.render() 执行成功！', 'ok');
 
-            // 如果上面成功，再添加一个 RenderPass 并完整渲染一帧
-            const renderPass = new RenderPass(scene, camera);
-            composer.addPass(renderPass);
-            composer.renderPass = renderPass; // 确保有 renderPass 引用
-            print('✅ RenderPass 已添加，准备完整渲染...');
-
-            composer.render();
-            print('✅ composer.render() 执行成功！', 'ok');
-
-            renderer.dispose();
             rt1.dispose();
             rt2.dispose();
-            print('\n🎉 EffectComposer.copyPass 及完整渲染均正常', 'ok');
+            renderer.dispose();
+
         } catch (err) {
             print('❌ 错误: ' + err.message, 'fail');
             console.error(err);
