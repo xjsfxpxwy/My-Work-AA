@@ -1,177 +1,46 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>全检：001‑012.js</title>
+    <meta charset="UTF-8">
+    <title>测试 006 EffectComposer</title>
     <style>
-        /* 样式同上，略 - 可复用之前的样式 */
-        body { margin:0; overflow:hidden; font-family: 'Segoe UI',Arial,sans-serif; background:#0d0d1a; }
-        #info { position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.8); color:#fff; padding:12px 24px; border-radius:8px; z-index:10; font-size:14px; }
-        #status-dots { position:absolute; top:20px; right:20px; display:flex; flex-wrap:wrap; gap:8px; z-index:10; background:rgba(0,0,0,0.6); padding:10px 18px; border-radius:20px; }
-        .dot { width:16px; height:16px; border-radius:50%; display:inline-block; border:1px solid rgba(255,255,255,0.15); }
-        .dot.loaded { background:#2ecc71; }
-        .dot.pending { background:#f39c12; animation:pulse 1.2s infinite; }
-        .dot.error { background:#e74c3c; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
-        #error-console { position:absolute; bottom:80px; left:20px; max-width:650px; background:rgba(200,0,0,0.9); color:#fff; padding:12px 18px; border-radius:8px; font-size:13px; font-family:monospace; display:none; z-index:20; }
-        #error-console.visible { display:block; }
-        #gui-tip { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,0.4); font-size:13px; z-index:10; background:rgba(0,0,0,0.5); padding:6px 18px; border-radius:20px; }
+        body { background: #0d0d1a; color: #fff; font-family: monospace; padding: 20px; }
+        #log { white-space: pre-wrap; font-size: 14px; }
+        .ok { color: #2ecc71; }
+        .err { color: #e74c3c; }
     </style>
 </head>
 <body>
-    <div id="info">⏳ 正在加载 12 个依赖...</div>
-    <div id="status-dots">
-        <span class="dot pending" id="dot-001" title="001.js"></span>
-        <span class="dot pending" id="dot-002" title="002.js"></span>
-        <span class="dot pending" id="dot-003" title="003.js"></span>
-        <span class="dot pending" id="dot-004" title="004.js"></span>
-        <span class="dot pending" id="dot-005" title="005.js"></span>
-        <span class="dot pending" id="dot-006" title="006 EffectComposer"></span>
-        <span class="dot pending" id="dot-007" title="007 RenderPass"></span>
-        <span class="dot pending" id="dot-008" title="008 ShaderPass"></span>
-        <span class="dot pending" id="dot-009" title="009 CopyShader"></span>
-        <span class="dot pending" id="dot-010" title="010 FXAAShader"></span>
-        <span class="dot pending" id="dot-011" title="011 Pass"></span>
-        <span class="dot pending" id="dot-012" title="012 MaskPass"></span>
-    </div>
-    <div id="error-console"></div>
-    <div id="gui-tip">🖱 拖拽旋转 · 滚轮缩放</div>
-
+    <pre id="log">🔍 测试 006 (EffectComposer)\n</pre>
     <script type="importmap">
     {
         "imports": {
-            "three": "./001.js",
-            "three-mesh-bvh": "./002.js",
-            "three-bvh-csg": "./003.js",
-            "lil-gui": "./004.js",
-            "three/addons/controls/OrbitControls.js": "./005.js",
-            "three/addons/": "./"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
         }
     }
     </script>
-
     <script type="module">
-        // ----- 工具函数 -----
-        const info = document.getElementById('info');
-        const errConsole = document.getElementById('error-console');
-        const dots = {};
-        ['001','002','003','004','005','006','007','008','009','010','011','012'].forEach(id => {
-            dots[id] = document.getElementById(`dot-${id}`);
-        });
-        function setDot(id, status) { if (dots[id]) dots[id].className = `dot ${status}`; }
-        function showError(msg) {
-            errConsole.textContent = msg;
-            errConsole.classList.add('visible');
-            info.innerHTML = '❌ 加载失败';
-        }
+        const log = document.getElementById('log');
+        const print = (msg, cls = '') => log.innerHTML += `<span class="${cls}">${msg}</span>\n`;
 
-        // ----- 主流程 -----
         try {
-            // 1. 核心库
-            setDot('001','pending');
             const THREE = await import('three');
-            setDot('001','loaded');
+            print(`✅ Three.js ${THREE.REVISION} 加载成功`, 'ok');
 
-            setDot('002','pending');
-            const { MeshBVH } = await import('three-mesh-bvh');
-            setDot('002','loaded');
-
-            setDot('003','pending');
-            const csg = await import('three-bvh-csg');
-            const { Brush, Evaluator, SUBTRACTION } = csg;
-            setDot('003','loaded');
-
-            setDot('004','pending');
-            const GUI = (await import('lil-gui')).default;
-            setDot('004','loaded');
-
-            setDot('005','pending');
-            const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-            setDot('005','loaded');
-
-            // 2. 后处理链
-            setDot('006','pending');
             const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-            setDot('006','loaded');
+            print('✅ EffectComposer 加载成功', 'ok');
 
-            setDot('007','pending');
-            const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
-            setDot('007','loaded');
-
-            setDot('008','pending');
-            const { ShaderPass } = await import('three/addons/postprocessing/ShaderPass.js');
-            setDot('008','loaded');
-
-            setDot('009','pending');
-            const { CopyShader } = await import('three/addons/shaders/CopyShader.js');
-            setDot('009','loaded');
-
-            setDot('010','pending');
-            const { FXAAShader } = await import('three/addons/shaders/FXAAShader.js');
-            setDot('010','loaded');
-
-            setDot('011','pending');
-            await import('three/addons/postprocessing/Pass.js');
-            setDot('011','loaded');
-
-            setDot('012','pending');
-            await import('three/addons/postprocessing/MaskPass.js');
-            setDot('012','loaded');
-
-            info.innerHTML = `✅ 全部 12 个依赖加载成功！<span style="background:#2ecc71;padding:0 10px;border-radius:12px;font-size:12px;margin-left:8px;">Three.js ${THREE.REVISION}</span>`;
-
-            // ----- 3. 简易场景演示（可选） -----
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0d0d1a);
-            const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 100);
-            camera.position.set(3,2,4);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(innerWidth, innerHeight);
-            renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-            document.body.appendChild(renderer.domElement);
-
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-
-            // 盒子
-            const geo = new THREE.BoxGeometry(1.5,1.5,1.5);
-            const mat = new THREE.MeshStandardMaterial({ color: '#4cc9f0', roughness:0.3, metalness:0.1 });
-            const mesh = new THREE.Mesh(geo, mat);
-            scene.add(mesh);
-            scene.add(new THREE.DirectionalLight(0xffffff, 2).position.set(2,5,3));
-            scene.add(new THREE.AmbientLight(0x404060));
-
-            // 后处理管线
+            // 实例化测试
+            const renderer = new THREE.WebGLRenderer();
             const composer = new EffectComposer(renderer);
-            composer.addPass(new RenderPass(scene, camera));
-            const fxaaPass = new ShaderPass(FXAAShader);
-            const pr = renderer.getPixelRatio();
-            fxaaPass.uniforms['resolution'].value.set(1/(innerWidth*pr), 1/(innerHeight*pr));
-            fxaaPass.renderToScreen = true;
-            composer.addPass(fxaaPass);
+            print('✅ EffectComposer 实例化成功', 'ok');
+            renderer.dispose();
 
-            function animate() {
-                requestAnimationFrame(animate);
-                mesh.rotation.y += 0.01;
-                controls.update();
-                composer.render();
-            }
-            animate();
-
-            window.addEventListener('resize', () => {
-                camera.aspect = innerWidth/innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-                composer.setSize(innerWidth, innerHeight);
-                const pr = renderer.getPixelRatio();
-                fxaaPass.uniforms['resolution'].value.set(1/(innerWidth*pr), 1/(innerHeight*pr));
-            });
-
-            errConsole.classList.remove('visible');
+            print('\n🎉 测试通过！', 'ok');
         } catch (err) {
+            print(`❌ 失败: ${err.message}`, 'err');
             console.error(err);
-            showError(err.message || err);
         }
     </script>
 </body>
