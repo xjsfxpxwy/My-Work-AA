@@ -2,51 +2,42 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>测试 00X (模块名)</title>
+    <title>测试 006 EffectComposer</title>
     <style>
         body { background: #0d0d1a; color: #fff; font-family: monospace; padding: 20px; }
         #log { white-space: pre-wrap; font-size: 14px; }
         .ok { color: #2ecc71; }
         .err { color: #e74c3c; }
-        .info { color: #3498db; }
     </style>
 </head>
 <body>
-    <pre id="log">🔍 测试 00X (模块名)\n</pre>
+    <pre id="log">🔍 测试 006 (EffectComposer)\n</pre>
     <script type="importmap">
     {
         "imports": {
-            "three": "../001.js",
-            "three-mesh-bvh": "../002.js",
-            "three-bvh-csg": "../003.js",
-            "lil-gui": "../004.js",
-            "three/addons/controls/OrbitControls.js": "../005.js",
-            "three/addons/": "../"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
         }
     }
     </script>
     <script type="module">
         const log = document.getElementById('log');
-        const print = (msg, cls = '') => {
-            log.innerHTML += `<span class="${cls}">${msg}</span>\n`;
-        };
+        const print = (msg, cls = '') => log.innerHTML += `<span class="${cls}">${msg}</span>\n`;
 
         try {
-            // ----- 这里替换为对应模块的导入和测试 -----
-            // 示例：测试 006 EffectComposer
             const THREE = await import('three');
             print(`✅ Three.js ${THREE.REVISION} 加载成功`, 'ok');
 
             const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
             print('✅ EffectComposer 加载成功', 'ok');
 
-            // 可选：实例化测试
+            // 实例化测试
             const renderer = new THREE.WebGLRenderer();
             const composer = new EffectComposer(renderer);
             print('✅ EffectComposer 实例化成功', 'ok');
             renderer.dispose();
 
-            print('\n🎉 测试 00X 全部通过！', 'ok');
+            print('\n🎉 测试通过！', 'ok');
         } catch (err) {
             print(`❌ 失败: ${err.message}`, 'err');
             console.error(err);
