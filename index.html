@@ -2,84 +2,53 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>测试 010 (FXAAShader)</title>
+    <title>测试 00X (模块名)</title>
+    <style>
+        body { background: #0d0d1a; color: #fff; font-family: monospace; padding: 20px; }
+        #log { white-space: pre-wrap; font-size: 14px; }
+        .ok { color: #2ecc71; }
+        .err { color: #e74c3c; }
+        .info { color: #3498db; }
+    </style>
 </head>
 <body>
-    <pre id="log"></pre>
-
+    <pre id="log">🔍 测试 00X (模块名)\n</pre>
     <script type="importmap">
     {
         "imports": {
-            "three": "./001.js",
-            "three/addons/postprocessing/EffectComposer.js": "./postprocessing/EffectComposer.js",
-            "three/addons/postprocessing/FullScreenQuad.js": "./postprocessing/FullScreenQuad.js",
-            "three/addons/postprocessing/MaskPass.js": "./postprocessing/MaskPass.js",
-            "three/addons/postprocessing/RenderPass.js": "./postprocessing/RenderPass.js",
-            "three/addons/postprocessing/ShaderPass.js": "./postprocessing/ShaderPass.js",
-            "three/addons/shaders/CopyShader.js": "./shaders/CopyShader.js",
-            "three/addons/shaders/FXAAShader.js": "./shaders/FXAAShader.js",
-            "three/addons/postprocessing/Pass.js": "./postprocessing/FullScreenQuad.js"
+            "three": "../001.js",
+            "three-mesh-bvh": "../002.js",
+            "three-bvh-csg": "../003.js",
+            "lil-gui": "../004.js",
+            "three/addons/controls/OrbitControls.js": "../005.js",
+            "three/addons/": "../"
         }
     }
     </script>
-
     <script type="module">
         const log = document.getElementById('log');
-        const print = (msg, color = 'white') => {
-            log.innerHTML += `<span style="color:${color}">${msg}</span>\n`;
+        const print = (msg, cls = '') => {
+            log.innerHTML += `<span class="${cls}">${msg}</span>\n`;
         };
 
-        print('🔍 测试 010 (FXAAShader)\n');
-
         try {
-            print('⏳ 加载 Three.js...');
+            // ----- 这里替换为对应模块的导入和测试 -----
+            // 示例：测试 006 EffectComposer
             const THREE = await import('three');
-            print(`✅ Three.js 加载成功，版本 ${THREE.REVISION}`, 'lime');
+            print(`✅ Three.js ${THREE.REVISION} 加载成功`, 'ok');
 
-            print('⏳ 加载 EffectComposer...');
-            const ec = await import('three/addons/postprocessing/EffectComposer.js');
-            print('✅ EffectComposer 加载成功', 'lime');
+            const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
+            print('✅ EffectComposer 加载成功', 'ok');
 
-            print('⏳ 加载 RenderPass...');
-            const rp = await import('three/addons/postprocessing/RenderPass.js');
-            print('✅ RenderPass 加载成功', 'lime');
-
-            print('⏳ 加载 ShaderPass...');
-            const sp = await import('three/addons/postprocessing/ShaderPass.js');
-            print('✅ ShaderPass 加载成功', 'lime');
-
-            print('⏳ 加载 FXAAShader...');
-            const fxs = await import('three/addons/shaders/FXAAShader.js');
-            print('✅ FXAAShader 加载成功', 'lime');
-            print('FXAAShader 导出: ' + Object.keys(fxs).join(', '));
-
-            if (!fxs.FXAAShader) {
-                throw new Error('FXAAShader 未正确导出');
-            }
-
-            // 简单实例化测试
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera();
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(100, 100);
-
-            const composer = new ec.EffectComposer(renderer);
-            const renderPass = new rp.RenderPass(scene, camera);
-            composer.addPass(renderPass);
-
-            const fxaaPass = new sp.ShaderPass(fxs.FXAAShader);
-            const pixelRatio = renderer.getPixelRatio();
-            fxaaPass.uniforms['resolution'].value.set(
-                1 / (100 * pixelRatio),
-                1 / (100 * pixelRatio)
-            );
-            fxaaPass.renderToScreen = true;
-            composer.addPass(fxaaPass);
-
-            print('✅ FXAAShader 通过 ShaderPass 实例化成功，后处理管线完整', 'lime');
+            // 可选：实例化测试
+            const renderer = new THREE.WebGLRenderer();
+            const composer = new EffectComposer(renderer);
+            print('✅ EffectComposer 实例化成功', 'ok');
             renderer.dispose();
+
+            print('\n🎉 测试 00X 全部通过！', 'ok');
         } catch (err) {
-            print('❌ 失败: ' + err.message, 'red');
+            print(`❌ 失败: ${err.message}`, 'err');
             console.error(err);
         }
     </script>
