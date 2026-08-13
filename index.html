@@ -22,7 +22,7 @@
         .preview-frame{border:none;background:white;box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:4px;}
 
         .dir-page{position:absolute;inset:0;background:#0d1117;display:none;flex-direction:column;z-index:20;}
-        .dir-header{display:flex;align-items:center;gap:12px;padding:15px 20px;background:#16213e;border-bottom:1px solid #0f3460;flex-wrap:wrap;}
+        .dir-header{display:flex;align-items:center;gap:12px;padding:15px 20px;background:#16213e;border-bottom:1px solid #0f3460;}
         .dir-btn{background:#0f3460;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;border:none;font-size:0.9rem;}
         .dir-btn:hover{background:#1a5a9c;}
         .back-btn{background:transparent;color:#4cc9f0;border:1px solid #0f3460;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;}
@@ -49,7 +49,9 @@
         .source-toolbar{display:flex;gap:10px;padding:12px 20px;background:#0d1117;border-bottom:1px solid #30363d;}
         .tool-btn{padding:8px 15px;background:#0f3460;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;}
         .tool-btn.copy{background:#238636;}
+        .tool-btn.reset{background:#6e7681;}
         .tool-btn.delete{background:#da3633;}
+        .tool-btn:hover{opacity:0.9;}
         .code-editor{flex:1;padding:20px;display:flex;}
         #sourceCode{width:100%;height:100%;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:15px;font-family:'Consolas','Monaco',monospace;font-size:14px;line-height:1.5;resize:none;outline:none;tab-size:4;}
         #sourceCode:focus{border-color:#4cc9f0;box-shadow:0 0 0 2px rgba(76,201,240,0.15);}
@@ -93,7 +95,7 @@
             <div class="menu-option" data-file="style.css"><span>style.css</span><span class="added-mark">✓ 已添加</span></div>
             <div class="menu-title">⚡ JavaScript</div>
             <div class="menu-option" data-file="script.js"><span>script.js</span><span class="added-mark">✓ 已添加</span></div>
-            <div class="menu-title">🧊 3D 模板（importmap 版）</div>
+            <div class="menu-title">🧊 3D 模板</div>
             <div class="menu-option" data-file="threejs-starter.html"><span>3D 基础项目</span><span class="added-mark">✓ 已添加</span></div>
         </div>
     </div>
@@ -106,6 +108,7 @@
         <div class="source-toolbar">
             <button class="tool-btn copy" id="copyBtn">📋 复制</button>
             <button class="tool-btn" id="pasteBtn">📥 粘贴</button>
+            <button class="tool-btn reset" id="resetBtn">🔄 返回</button>
             <button class="tool-btn delete" id="deleteBtn">🗑️ 删除</button>
         </div>
         <div class="code-editor">
@@ -145,12 +148,12 @@
     var previewFrame = $('previewFrame');
     var copyBtn = $('copyBtn');
     var pasteBtn = $('pasteBtn');
+    var resetBtn = $('resetBtn');
     var deleteBtn = $('deleteBtn');
     var resetAllBtn = $('resetAllBtn');
     var deviceItems = document.querySelectorAll('.dropdown-item[data-device]');
     var menuOptions = document.querySelectorAll('.menu-option[data-file]');
 
-    // ========== 工具函数 ==========
     function toast(msg) {
         var old = document.querySelector('.toast');
         if (old) old.remove();
@@ -166,11 +169,10 @@
     }
     function esc(str) {
         var d = document.createElement('div');
-        d.textContent = String(str);
+        d.textContent = str;
         return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // ========== 页面切换 ==========
     function showPreview() {
         previewPage.style.display = 'flex';
         dirPage.style.display = 'none';
@@ -206,7 +208,6 @@
         if (!isOpen) menu.classList.add('show');
     }
 
-    // ========== 设备切换 ==========
     function setDevice(mode) {
         device = mode;
         deviceItems.forEach(function(el) { el.classList.toggle('active', el.dataset.device === mode); });
@@ -217,7 +218,6 @@
         buildPreview();
     }
 
-    // ========== 文件操作 ==========
     function persist() { save(files); }
     function addFile(fileName) {
         if (files[fileName]) { toast('"' + fileName + '" 已存在'); return false; }
@@ -270,6 +270,7 @@
         }
     }
 
+    // 重置全部数据并刷新
     function resetAll() {
         if (confirm('确定要清空所有文件并恢复默认模板吗？此操作不可撤销。')) {
             localStorage.removeItem(STORAGE_KEY);
@@ -277,7 +278,7 @@
         }
     }
 
-    // ========== Three.js 使用检测 ==========
+    // ========== 核心：Three.js 智能检测 ==========
     function detectThreeUsage(files) {
         var fileNames = Object.keys(files);
         var hasImportmap = false;
@@ -287,22 +288,18 @@
         for (var i = 0; i < fileNames.length; i++) {
             var c = files[fileNames[i]] || '';
             if (typeof c !== 'string') continue;
-
-            // 检测 importmap
             if (c.indexOf('type="importmap"') !== -1 || c.indexOf("type='importmap'") !== -1) {
                 hasImportmap = true;
             }
-            // 检测 ES module 导入 three
             if (c.indexOf("from 'three'") !== -1 || c.indexOf('from "three"') !== -1 ||
-                c.indexOf("import * as THREE") !== -1 || (c.indexOf('import ') !== -1 && c.indexOf('three') !== -1)) {
+                c.indexOf('import * as THREE') !== -1 ||
+                (c.indexOf('import {') !== -1 && c.indexOf('three') !== -1)) {
                 hasThreeImport = true;
             }
-            // 检测全局 THREE 用法（旧版 UMD）
             if (c.indexOf('new THREE.') !== -1 || (c.indexOf('THREE.') !== -1 && c.indexOf('import') === -1)) {
                 hasThreeGlobal = true;
             }
         }
-
         return { hasImportmap: hasImportmap, hasThreeImport: hasThreeImport, hasThreeGlobal: hasThreeGlobal };
     }
 
@@ -312,7 +309,7 @@
         var threeCDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
         var usage = detectThreeUsage(files);
 
-        // ✅ 关键：用了 importmap 或 ES module 就不注入旧版 CDN
+        // 如果用户用了 importmap 或 ES module 导入，不注入旧版 UMD CDN
         var shouldInjectCDN = !usage.hasImportmap && !usage.hasThreeImport && usage.hasThreeGlobal;
 
         if (shouldInjectCDN && htmlContent && htmlContent.indexOf(threeCDN) === -1) {
@@ -332,11 +329,11 @@
         var combinedCSS = '';
         for (var k = 0; k < cssFiles.length; k++) combinedCSS += files[cssFiles[k]] + '\n';
 
-        // 合并 JS（自动识别 module 类型）
+        // 合并 JS（自动识别 module）
         var jsFiles = Object.keys(files).filter(function(f) { return f.endsWith('.js'); });
         var jsScripts = '';
         for (var m = 0; m < jsFiles.length; m++) {
-            var jsContent = files[jsFiles[m]] || '';
+            var jsContent = files[jsFiles[m]];
             var isModule = jsContent.indexOf('import ') !== -1 || jsContent.indexOf('export ') !== -1;
             if (isModule) {
                 jsScripts += '<script type="module">\n' + jsContent + '\n<\/script>\n';
@@ -373,15 +370,10 @@
                 }
             }
         } else {
-            // 兜底页面
             finalHtml = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>预览</title>\n';
-            if (usage.hasImportmap || usage.hasThreeImport) {
-                finalHtml += '<script type="importmap">\n{\n  "imports": {\n    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",\n    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"\n  }\n}\n<\/script>\n';
-            } else if (shouldInjectCDN) {
-                finalHtml += '<script src="' + threeCDN + '"><\/script>\n';
-            }
+            if (shouldInjectCDN) finalHtml += '<script src="' + threeCDN + '"><\/script>\n';
             if (combinedCSS.trim()) finalHtml += '<style>\n' + combinedCSS + '\n</style>\n';
-            finalHtml += '</head>\n<body>\n<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0d1a;color:#e6e6e6;font-family:sans-serif;">\n  <div style="text-align:center;"><div style="font-size:64px;">👋</div><h1>代码预览</h1><p>CSS/JS 已自动加载</p></div>\n</div>\n';
+            finalHtml += '</head>\n<body>\n<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f0f0f0;color:#333;font-family:sans-serif;">\n  <div style="text-align:center;"><div style="font-size:64px;">👋</div><h1>代码预览</h1><p>CSS/JS 已自动加载</p></div>\n</div>\n';
             finalHtml += jsScripts;
             finalHtml += '\n</body>\n</html>';
         }
@@ -392,19 +384,12 @@
     // ========== 默认内容 ==========
     function getDefaultContent(fileName) {
         var ext = fileName.split('.').pop().toLowerCase();
-
-        // 3D 模板：importmap + OrbitControls（现代写法）
         if (fileName === 'threejs-starter.html') {
-            return '<!DOCTYPE html>\n' +
-                '<html lang="zh-CN">\n' +
-                '<head>\n' +
+            return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n' +
                 '    <meta charset="UTF-8">\n' +
                 '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
                 '    <title>3D 基础场景</title>\n' +
-                '    <style>\n' +
-                '        body { margin: 0; overflow: hidden; }\n' +
-                '        canvas { display: block; }\n' +
-                '    </style>\n' +
+                '    <style>body { margin: 0; overflow: hidden; } canvas { display: block; }</style>\n' +
                 '    <script type="importmap">\n' +
                 '    {\n' +
                 '        "imports": {\n' +
@@ -413,44 +398,29 @@
                 '        }\n' +
                 '    }\n' +
                 '    <\/script>\n' +
-                '</head>\n' +
-                '<body>\n' +
+                '</head>\n<body>\n' +
                 '    <script type="module">\n' +
                 '        import * as THREE from \'three\';\n' +
                 '        import { OrbitControls } from \'three/addons/controls/OrbitControls.js\';\n' +
-                '\n' +
                 '        const scene = new THREE.Scene();\n' +
                 '        scene.background = new THREE.Color(0x0d0d1a);\n' +
-                '\n' +
                 '        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);\n' +
                 '        camera.position.set(3, 2, 5);\n' +
-                '\n' +
                 '        const renderer = new THREE.WebGLRenderer({ antialias: true });\n' +
                 '        renderer.setSize(window.innerWidth, window.innerHeight);\n' +
                 '        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));\n' +
                 '        document.body.appendChild(renderer.domElement);\n' +
-                '\n' +
                 '        const controls = new OrbitControls(camera, renderer.domElement);\n' +
                 '        controls.enableDamping = true;\n' +
                 '        controls.dampingFactor = 0.08;\n' +
-                '\n' +
                 '        const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);\n' +
-                '        const material = new THREE.MeshStandardMaterial({\n' +
-                '            color: 0x4cc9f0,\n' +
-                '            roughness: 0.3,\n' +
-                '            metalness: 0.1\n' +
-                '        });\n' +
+                '        const material = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.3, metalness: 0.1 });\n' +
                 '        const cube = new THREE.Mesh(geometry, material);\n' +
-                '        cube.castShadow = true;\n' +
                 '        scene.add(cube);\n' +
-                '\n' +
-                '        const ambientLight = new THREE.AmbientLight(0x404060);\n' +
-                '        scene.add(ambientLight);\n' +
-                '\n' +
+                '        scene.add(new THREE.AmbientLight(0x404060));\n' +
                 '        const dirLight = new THREE.DirectionalLight(0xffffff, 2);\n' +
                 '        dirLight.position.set(2, 5, 3);\n' +
                 '        scene.add(dirLight);\n' +
-                '\n' +
                 '        function animate() {\n' +
                 '            requestAnimationFrame(animate);\n' +
                 '            cube.rotation.x += 0.005;\n' +
@@ -459,76 +429,30 @@
                 '            renderer.render(scene, camera);\n' +
                 '        }\n' +
                 '        animate();\n' +
-                '\n' +
-                '        window.addEventListener(\'resize\', () => {\n' +
+                '        window.addEventListener("resize", () => {\n' +
                 '            camera.aspect = window.innerWidth / window.innerHeight;\n' +
                 '            camera.updateProjectionMatrix();\n' +
                 '            renderer.setSize(window.innerWidth, window.innerHeight);\n' +
                 '        });\n' +
-                '\n' +
-                '        console.log(\'✅ 立方体旋转已启动！\');\n' +
-                '    <\/script>\n' +
-                '</body>\n' +
-                '</html>';
+                '        console.log("✅ 立方体旋转已启动！");\n' +
+                '    <\/script>\n</body>\n</html>';
         }
-
         if (ext === 'html') {
-            return '<!DOCTYPE html>\n' +
-                '<html lang="zh-CN">\n' +
-                '<head>\n' +
-                '    <meta charset="UTF-8">\n' +
-                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
-                '    <title>我的网页</title>\n' +
-                '</head>\n' +
-                '<body>\n' +
-                '    <h1>欢迎</h1>\n' +
-                '    <button id="myButton">点击我</button>\n' +
-                '</body>\n' +
-                '</html>';
+            return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head><meta charset="UTF-8"><title>我的网页</title></head>\n<body>\n  <h1>欢迎</h1>\n  <button id="myButton">点击我</button>\n</body>\n</html>';
         }
         if (ext === 'css') {
-            return 'body {\n' +
-                '    font-family: Arial, sans-serif;\n' +
-                '    margin: 0;\n' +
-                '    padding: 20px;\n' +
-                '    background: linear-gradient(135deg, #667eea, #764ba2);\n' +
-                '    color: white;\n' +
-                '    min-height: 100vh;\n' +
-                '}\n' +
-                'button {\n' +
-                '    padding: 12px 24px;\n' +
-                '    background: #4cc9f0;\n' +
-                '    border: none;\n' +
-                '    border-radius: 6px;\n' +
-                '    cursor: pointer;\n' +
-                '    font-weight: bold;\n' +
-                '}\n' +
-                'button:hover {\n' +
-                '    background: #3aa3c4;\n' +
-                '}';
+            return 'body {\n  font-family: Arial;\n  margin: 0;\n  padding: 20px;\n  background: linear-gradient(135deg, #667eea, #764ba2);\n  color: white;\n  min-height: 100vh;\n}\nbutton {\n  padding: 12px 24px;\n  background: #4cc9f0;\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-weight: bold;\n}';
         }
         if (ext === 'js') {
             if (fileName === 'script.js') {
-                return '// script.js\n' +
-                    '// 您的 JavaScript 代码（3D 逻辑等）\n' +
-                    'console.log("script.js 已加载");\n' +
-                    '\n' +
-                    '// 示例：点击交互\n' +
-                    'document.addEventListener("DOMContentLoaded", () => {\n' +
-                    '    const btn = document.getElementById("myButton");\n' +
-                    '    if (btn) {\n' +
-                    '        btn.addEventListener("click", () => {\n' +
-                    '            alert("Hello from script.js!");\n' +
-                    '        });\n' +
-                    '    }\n' +
-                    '});';
+                return '// script.js\n// 您的 JavaScript 代码（3D 逻辑等）\nconsole.log("script.js 已加载");';
             }
             return '// ' + fileName + '\nconsole.log("' + fileName + ' 已加载");';
         }
         return '// ' + fileName;
     }
 
-    // ========== 剪贴板操作 ==========
+    // 剪贴板操作
     function copyCode() {
         if (navigator.clipboard) {
             navigator.clipboard.writeText(sourceCode.value).then(function() { toast('✅ 已复制'); }).catch(function() {
@@ -550,37 +474,7 @@
         }
     }
 
-    // ========== Tab 键支持 ==========
-    sourceCode.addEventListener('keydown', function(e) {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            var start = this.selectionStart;
-            var end = this.selectionEnd;
-            var value = this.value;
-            var indent = '    '; // 4 空格缩进
-
-            if (e.shiftKey) {
-                // Shift+Tab：减少缩进
-                var lineStart = value.lastIndexOf('\n', start - 1) + 1;
-                var lineContent = value.substring(lineStart, end);
-                var spacesToRemove = 0;
-                for (var i = 0; i < 4 && i < lineContent.length && lineContent[i] === ' '; i++) {
-                    spacesToRemove++;
-                }
-                if (spacesToRemove > 0) {
-                    this.value = value.substring(0, lineStart) + lineContent.substring(spacesToRemove) + value.substring(end);
-                    this.selectionStart = this.selectionEnd = start - spacesToRemove;
-                }
-            } else {
-                // Tab：插入缩进
-                this.value = value.substring(0, start) + indent + value.substring(end);
-                this.selectionStart = this.selectionEnd = start + indent.length;
-            }
-            syncCurrent();
-        }
-    });
-
-    // ========== 事件绑定 ==========
+    // 事件绑定
     deviceBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(deviceMenu); });
     addFileBtn.addEventListener('click', function(e) { e.stopPropagation(); updateAddedMarks(); toggleMenu(addFileMenu); });
     dirBtn.addEventListener('click', showDir);
@@ -592,6 +486,7 @@
     newFileBtn.addEventListener('click', function() { var name = prompt('输入文件名（含扩展名）：'); if (name && name.trim()) addFile(name.trim()); });
     copyBtn.addEventListener('click', copyCode);
     pasteBtn.addEventListener('click', pasteCode);
+    resetBtn.addEventListener('click', resetAll);
     deleteBtn.addEventListener('click', function() {
         if (!currentFile) { toast('没有选中文件'); return; }
         if (confirm('确定删除 ' + currentFile + ' ？')) { deleteFile(currentFile); showDir(); toast('已删除: ' + currentFile); }
@@ -599,6 +494,30 @@
     sourceCode.addEventListener('input', syncCurrent);
     sourceCode.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); syncCurrent(); toast('💾 已保存并更新预览'); }
+        // Tab 键缩进支持
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            var spaces = '    ';
+            if (e.shiftKey) {
+                // Shift+Tab 减少缩进
+                var lineStart = this.value.lastIndexOf('\n', start - 1) + 1;
+                var lineText = this.value.substring(lineStart, start);
+                if (lineText.startsWith('    ')) {
+                    this.value = this.value.substring(0, lineStart) + this.value.substring(lineStart + 4);
+                    this.selectionStart = this.selectionEnd = start - 4;
+                } else if (lineText.startsWith('\t')) {
+                    this.value = this.value.substring(0, lineStart) + this.value.substring(lineStart + 1);
+                    this.selectionStart = this.selectionEnd = start - 1;
+                }
+            } else {
+                // Tab 插入 4 空格
+                this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+            syncCurrent();
+        }
     });
     document.addEventListener('click', function(e) {
         if (!deviceBtn.contains(e.target) && !deviceMenu.contains(e.target)) deviceMenu.classList.remove('show');
@@ -606,7 +525,7 @@
     });
     window.addEventListener('resize', function() { if (device === 'desktop') buildPreview(); });
 
-    // ========== 初始化 ==========
+    // 初始化
     function init() {
         if (Object.keys(files).length === 0) {
             files['index.html'] = getDefaultContent('index.html');
