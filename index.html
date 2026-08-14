@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koder 3D 编辑器 · 稳定版</title>
+    <title>Koder 3D 全能编辑器</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{background:#0d1117;color:#e6e6e6;font-family:'Segoe UI','Microsoft YaHei',sans-serif;height:100vh;overflow:hidden;}
@@ -22,11 +22,13 @@
         .preview-frame{border:none;background:white;box-shadow:0 8px 32px rgba(0,0,0,0.4);border-radius:4px;}
 
         .dir-page{position:absolute;inset:0;background:#0d1117;display:none;flex-direction:column;z-index:20;}
-        .dir-header{display:flex;align-items:center;gap:12px;padding:15px 20px;background:#16213e;border-bottom:1px solid #0f3460;}
+        .dir-header{display:flex;align-items:center;gap:12px;padding:15px 20px;background:#16213e;border-bottom:1px solid #0f3460;flex-wrap:wrap;}
         .dir-btn{background:#0f3460;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;border:none;font-size:0.9rem;}
         .dir-btn:hover{background:#1a5a9c;}
         .back-btn{background:transparent;color:#4cc9f0;border:1px solid #0f3460;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;}
         .back-btn:hover{background:#0f3460;}
+        .reset-btn{background:#da3633;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-left:10px;}
+        .reset-btn:hover{background:#f85149;}
         .file-list{flex:1;padding:20px;overflow-y:auto;}
         .file-item{padding:15px;margin-bottom:8px;background:#161b22;border-radius:8px;border-left:4px solid #4cc9f0;cursor:pointer;display:flex;align-items:center;gap:12px;}
         .file-item:hover{background:#1a2332;}
@@ -36,17 +38,17 @@
         .empty-msg{text-align:center;color:#6c757d;margin-top:60px;}
         .empty-icon{font-size:48px;opacity:0.5;}
 
-        .add-menu{position:absolute;top:70px;right:20px;background:#16213e;border-radius:8px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:10px;min-width:250px;max-height:400px;overflow-y:auto;z-index:30;}
+        .add-menu{position:absolute;top:70px;right:20px;background:#16213e;border-radius:8px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:6px;min-width:260px;max-height:450px;overflow-y:auto;z-index:30;}
         .add-menu.show{display:flex;}
-        .menu-title{color:#4cc9f0;font-size:0.9rem;margin-bottom:8px;border-bottom:1px solid #0f3460;padding-bottom:5px;}
-        .menu-option{padding:10px 15px;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;}
+        .menu-title{color:#4cc9f0;font-size:0.9rem;margin:8px 0 4px 0;border-bottom:1px solid #0f3460;padding-bottom:4px;}
+        .menu-option{padding:8px 12px;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;}
         .menu-option:hover{background:#0f3460;}
         .added-mark{color:#4cc9f0;font-size:0.8rem;display:none;}
 
         .source-page{position:absolute;inset:0;background:#0d1117;display:none;flex-direction:column;z-index:30;}
         .source-header{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#16213e;border-bottom:1px solid #0f3460;}
         .source-title{color:#4cc9f0;font-size:1.2rem;font-weight:bold;}
-        .source-toolbar{display:flex;gap:10px;padding:12px 20px;background:#0d1117;border-bottom:1px solid #30363d;}
+        .source-toolbar{display:flex;gap:10px;padding:12px 20px;background:#0d1117;border-bottom:1px solid #30363d;flex-wrap:wrap;}
         .tool-btn{padding:8px 15px;background:#0f3460;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;}
         .tool-btn.copy{background:#238636;}
         .tool-btn.reset{background:#6e7681;}
@@ -57,8 +59,6 @@
         #sourceCode:focus{border-color:#4cc9f0;box-shadow:0 0 0 2px rgba(76,201,240,0.15);}
         .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#238636;color:white;padding:12px 24px;border-radius:8px;z-index:999;font-weight:600;animation:fadeInOut 2s ease forwards;pointer-events:none;}
         @keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(20px);}15%{opacity:1;transform:translateX(-50%) translateY(0);}85%{opacity:1;}100%{opacity:0;}}
-        .reset-btn{background:#da3633;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-left:10px;}
-        .reset-btn:hover{background:#f85149;}
     </style>
 </head>
 <body>
@@ -95,8 +95,12 @@
             <div class="menu-option" data-file="style.css"><span>style.css</span><span class="added-mark">✓ 已添加</span></div>
             <div class="menu-title">⚡ JavaScript</div>
             <div class="menu-option" data-file="script.js"><span>script.js</span><span class="added-mark">✓ 已添加</span></div>
-            <div class="menu-title">🧊 3D 模板</div>
+            <div class="menu-title">🧊 3D 基础</div>
             <div class="menu-option" data-file="threejs-starter.html"><span>3D 基础项目</span><span class="added-mark">✓ 已添加</span></div>
+            <div class="menu-title">🧩 3D 布尔运算 (CSG)</div>
+            <div class="menu-option" data-file="csg-starter.html"><span>CSG 布尔运算</span><span class="added-mark">✓ 已添加</span></div>
+            <div class="menu-title">🌀 3D 分形</div>
+            <div class="menu-option" data-file="fractal-starter.html"><span>3D 分形生成</span><span class="added-mark">✓ 已添加</span></div>
         </div>
     </div>
 
@@ -108,7 +112,7 @@
         <div class="source-toolbar">
             <button class="tool-btn copy" id="copyBtn">📋 复制</button>
             <button class="tool-btn" id="pasteBtn">📥 粘贴</button>
-            <button class="tool-btn reset" id="resetBtn">🔄 返回</button>
+            <button class="tool-btn reset" id="resetBtn">🔄 重置当前文件</button>
             <button class="tool-btn delete" id="deleteBtn">🗑️ 删除</button>
         </div>
         <div class="code-editor">
@@ -120,7 +124,7 @@
 <script>
 (function() {
     'use strict';
-    var STORAGE_KEY = 'koder_stable_v2';
+    var STORAGE_KEY = 'koder_universal_v3';
     function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     function load() {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
@@ -270,82 +274,151 @@
         }
     }
 
-    // 重置全部数据并刷新
-    function resetAll() {
-        if (confirm('确定要清空所有文件并恢复默认模板吗？此操作不可撤销。')) {
-            localStorage.removeItem(STORAGE_KEY);
-            location.reload();
+    // ========== 核心：智能依赖检测与注入 ==========
+    function detectImports(code) {
+        // 检测 import 语句，捕获 from 后的模块名
+        var importRegex = /from\s+['"]([^'"]+)['"]/g;
+        var matches = [];
+        var m;
+        while ((m = importRegex.exec(code)) !== null) {
+            matches.push(m[1]);
         }
+        // 也检测 import() 动态导入
+        var dynamicRegex = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+        while ((m = dynamicRegex.exec(code)) !== null) {
+            matches.push(m[1]);
+        }
+        return matches;
     }
 
-    // ========== 核心：Three.js 智能检测 ==========
     function detectThreeUsage(files) {
-        var fileNames = Object.keys(files);
-        var hasImportmap = false;
-        var hasThreeImport = false;
-        var hasThreeGlobal = false;
-
-        for (var i = 0; i < fileNames.length; i++) {
-            var c = files[fileNames[i]] || '';
-            if (typeof c !== 'string') continue;
-            if (c.indexOf('type="importmap"') !== -1 || c.indexOf("type='importmap'") !== -1) {
-                hasImportmap = true;
+        var hasImportMap = false;
+        var hasModuleImport = false;
+        var hasGlobalThree = false;
+        var allCode = '';
+        var importModules = [];
+        for (var name in files) {
+            var content = files[name] || '';
+            if (typeof content !== 'string') continue;
+            allCode += content + '\n';
+            if (content.indexOf('type="importmap"') !== -1 || content.indexOf("type='importmap'") !== -1) {
+                hasImportMap = true;
             }
-            if (c.indexOf("from 'three'") !== -1 || c.indexOf('from "three"') !== -1 ||
-                c.indexOf('import * as THREE') !== -1 ||
-                (c.indexOf('import {') !== -1 && c.indexOf('three') !== -1)) {
-                hasThreeImport = true;
+            if (/from\s+['"]three['"]/.test(content) || /import\s*\(\s*['"]three['"]/.test(content) ||
+                /import\s*\{[^}]*\}\s*from\s*['"]three['"]/.test(content)) {
+                hasModuleImport = true;
             }
-            if (c.indexOf('new THREE.') !== -1 || (c.indexOf('THREE.') !== -1 && c.indexOf('import') === -1)) {
-                hasThreeGlobal = true;
+            // 检测全局 THREE 使用（排除 import 语句中的）
+            var lines = content.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (/^import\b/.test(line) || /^export\b/.test(line)) continue;
+                if (line.indexOf('THREE.') !== -1 && line.indexOf('import') === -1) {
+                    hasGlobalThree = true;
+                }
             }
+            // 收集所有导入的模块名
+            var imps = detectImports(content);
+            importModules = importModules.concat(imps);
         }
-        return { hasImportmap: hasImportmap, hasThreeImport: hasThreeImport, hasThreeGlobal: hasThreeGlobal };
+        return { hasImportMap: hasImportMap, hasModuleImport: hasModuleImport, hasGlobalThree: hasGlobalThree, importModules: importModules, allCode: allCode };
     }
 
-    // ========== 核心：预览生成 ==========
+    // 常见库的 CDN 映射（ESM）
+    var LIB_MAP = {
+        'three': 'https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js',
+        'three/addons/': 'https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/',
+        'three-bvh-csg': 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.1.0/dist/index.js',
+        'three-csg-ts': 'https://cdn.jsdelivr.net/npm/three-csg-ts@0.2.0/dist/index.js',
+        'three-mesh-bvh': 'https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.6.0/dist/index.js',
+        'three-noise': 'https://cdn.jsdelivr.net/npm/three-noise@0.1.0/dist/index.js',
+        'simplex-noise': 'https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/dist/esm/simplex-noise.js'
+    };
+
+    function generateImportMap(modules) {
+        var imports = {};
+        // 固定添加 three 和 three/addons
+        imports['three'] = LIB_MAP['three'];
+        imports['three/addons/'] = LIB_MAP['three/addons/'];
+        // 添加检测到的其他库
+        for (var i = 0; i < modules.length; i++) {
+            var mod = modules[i];
+            if (LIB_MAP[mod]) {
+                imports[mod] = LIB_MAP[mod];
+            }
+            // 处理带路径的，如 three/addons/controls/OrbitControls.js 应该由 three/addons/ 映射处理，忽略
+        }
+        return { imports: imports };
+    }
+
     function buildPreview() {
         var htmlContent = files['index.html'] || '';
-        var threeCDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
         var usage = detectThreeUsage(files);
 
-        // 如果用户用了 importmap 或 ES module 导入，不注入旧版 UMD CDN
-        var shouldInjectCDN = !usage.hasImportmap && !usage.hasThreeImport && usage.hasThreeGlobal;
-
-        if (shouldInjectCDN && htmlContent && htmlContent.indexOf(threeCDN) === -1) {
-            var scriptTag = '<script src="' + threeCDN + '"><\/script>';
-            if (htmlContent.indexOf('</head>') !== -1) {
-                htmlContent = htmlContent.replace('</head>', scriptTag + '\n</head>');
-            } else if (/<head[^>]*>/i.test(htmlContent)) {
-                htmlContent = htmlContent.replace(/<head[^>]*>/i, '$1\n' + scriptTag);
-            } else {
-                htmlContent = scriptTag + '\n' + htmlContent;
-            }
-        }
-
-        // 合并 CSS
+        var combinedCSS = '';
         var cssFiles = Object.keys(files).filter(function(f) { return f.endsWith('.css'); });
         cssFiles.sort(function(a,b) { return a === 'style.css' ? -1 : b === 'style.css' ? 1 : 0; });
-        var combinedCSS = '';
         for (var k = 0; k < cssFiles.length; k++) combinedCSS += files[cssFiles[k]] + '\n';
 
-        // 合并 JS（自动识别 module）
+        // 合并 JS（但我们会以模块方式处理）
         var jsFiles = Object.keys(files).filter(function(f) { return f.endsWith('.js'); });
         var jsScripts = '';
+        var allJsContent = '';
         for (var m = 0; m < jsFiles.length; m++) {
-            var jsContent = files[jsFiles[m]];
-            var isModule = jsContent.indexOf('import ') !== -1 || jsContent.indexOf('export ') !== -1;
-            if (isModule) {
-                jsScripts += '<script type="module">\n' + jsContent + '\n<\/script>\n';
-            } else {
-                jsScripts += '<script>\n' + jsContent + '\n<\/script>\n';
-            }
+            allJsContent += files[jsFiles[m]] + '\n';
         }
 
-        // 组装最终 HTML
-        var finalHtml;
-        if (htmlContent.trim()) {
-            finalHtml = htmlContent;
+        // 决定是否使用模块方式
+        var useModule = usage.hasModuleImport || usage.hasImportMap || (usage.importModules && usage.importModules.length > 0);
+        // 如果用户自己定义了 importmap，则保留，否则自动生成
+        var importMapScript = '';
+        var hasUserImportMap = usage.hasImportMap;
+
+        if (useModule && !hasUserImportMap) {
+            // 自动生成 importmap
+            var modules = usage.importModules || [];
+            var mapObj = generateImportMap(modules);
+            importMapScript = '<script type="importmap">\n' + JSON.stringify(mapObj, null, 2) + '\n<\/script>\n';
+        } else if (hasUserImportMap) {
+            // 用户已有 importmap，不做改动
+            importMapScript = ''; // 但我们需要从 htmlContent 中提取，但 build 时我们保留用户自己的，所以不额外添加
+        }
+
+        // 组装最终HTML
+        var finalHtml = htmlContent.trim();
+
+        // 如果没有 index.html，生成基础结构
+        if (!finalHtml) {
+            finalHtml = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>预览</title>\n';
+            // 如果使用模块，添加 importmap
+            if (useModule && !hasUserImportMap) {
+                finalHtml += importMapScript;
+            }
+            if (combinedCSS.trim()) finalHtml += '<style>\n' + combinedCSS + '\n</style>\n';
+            finalHtml += '</head>\n<body>\n<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f0f0f0;color:#333;font-family:sans-serif;">\n  <div style="text-align:center;"><div style="font-size:64px;">👋</div><h1>代码预览</h1><p>CSS/JS 已自动加载</p></div>\n</div>\n';
+            // 添加JS
+            if (allJsContent.trim()) {
+                if (useModule) {
+                    finalHtml += '<script type="module">\n' + allJsContent + '\n<\/script>\n';
+                } else {
+                    finalHtml += '<script>\n' + allJsContent + '\n<\/script>\n';
+                }
+            }
+            finalHtml += '\n</body>\n</html>';
+        } else {
+            // 已有 index.html，注入 CSS 和 JS，以及 importmap（如果无用户定义且需要使用模块）
+            // 插入 importmap（在 head 中）
+            if (useModule && !hasUserImportMap) {
+                // 尝试在 head 内插入
+                if (/<head[^>]*>/i.test(finalHtml)) {
+                    finalHtml = finalHtml.replace(/<head[^>]*>/i, function(match) {
+                        return match + '\n' + importMapScript;
+                    });
+                } else {
+                    finalHtml = importMapScript + '\n' + finalHtml;
+                }
+            }
+
             // 注入 CSS
             if (combinedCSS.trim()) {
                 var styleBlock = '<style>\n' + combinedCSS + '\n</style>';
@@ -357,33 +430,43 @@
                     finalHtml = styleBlock + '\n' + finalHtml;
                 }
             }
-            // 移除可能存在的旧 script.js 引用，避免冲突
+
+            // 移除旧的 script.js 引用，避免重复
             finalHtml = finalHtml.replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, '');
-            // 注入 JS
-            if (jsScripts.trim()) {
+
+            // 注入 JS（如果使用模块则用 type="module"，否则普通）
+            if (allJsContent.trim()) {
+                var jsTag = useModule ? '<script type="module">\n' + allJsContent + '\n<\/script>' : '<script>\n' + allJsContent + '\n<\/script>';
                 if (/<\/body>/i.test(finalHtml)) {
-                    finalHtml = finalHtml.replace(/<\/body>/i, jsScripts + '</body>');
+                    finalHtml = finalHtml.replace(/<\/body>/i, jsTag + '\n</body>');
                 } else if (/<body[^>]*>/i.test(finalHtml)) {
-                    finalHtml += '\n' + jsScripts;
+                    finalHtml = finalHtml.replace(/<body[^>]*>/i, '$1\n' + jsTag);
                 } else {
-                    finalHtml += '\n' + jsScripts;
+                    finalHtml += '\n' + jsTag;
                 }
             }
-        } else {
-            finalHtml = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>预览</title>\n';
-            if (shouldInjectCDN) finalHtml += '<script src="' + threeCDN + '"><\/script>\n';
-            if (combinedCSS.trim()) finalHtml += '<style>\n' + combinedCSS + '\n</style>\n';
-            finalHtml += '</head>\n<body>\n<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f0f0f0;color:#333;font-family:sans-serif;">\n  <div style="text-align:center;"><div style="font-size:64px;">👋</div><h1>代码预览</h1><p>CSS/JS 已自动加载</p></div>\n</div>\n';
-            finalHtml += jsScripts;
-            finalHtml += '\n</body>\n</html>';
+        }
+
+        // 如果使用全局 THREE 且没有模块导入，且没有 importmap，则注入 UMD 版本的 three.min.js
+        if (!useModule && usage.hasGlobalThree) {
+            var threeCDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
+            if (finalHtml.indexOf(threeCDN) === -1) {
+                var scriptTag = '<script src="' + threeCDN + '"><\/script>';
+                if (finalHtml.indexOf('</head>') !== -1) {
+                    finalHtml = finalHtml.replace('</head>', scriptTag + '\n</head>');
+                } else if (/<head[^>]*>/i.test(finalHtml)) {
+                    finalHtml = finalHtml.replace(/<head[^>]*>/i, '$1\n' + scriptTag);
+                } else {
+                    finalHtml = scriptTag + '\n' + finalHtml;
+                }
+            }
         }
 
         previewFrame.srcdoc = finalHtml;
     }
 
-    // ========== 默认内容 ==========
+    // ========== 默认模板内容 ==========
     function getDefaultContent(fileName) {
-        var ext = fileName.split('.').pop().toLowerCase();
         if (fileName === 'threejs-starter.html') {
             return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n' +
                 '    <meta charset="UTF-8">\n' +
@@ -437,6 +520,175 @@
                 '        console.log("✅ 立方体旋转已启动！");\n' +
                 '    <\/script>\n</body>\n</html>';
         }
+        if (fileName === 'csg-starter.html') {
+            return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n' +
+                '    <meta charset="UTF-8">\n' +
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                '    <title>3D 布尔运算 (CSG)</title>\n' +
+                '    <style>body { margin: 0; overflow: hidden; } canvas { display: block; }</style>\n' +
+                '    <!-- 使用 importmap 引入 three 和 three-bvh-csg -->\n' +
+                '    <script type="importmap">\n' +
+                '    {\n' +
+                '        "imports": {\n' +
+                '            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",\n' +
+                '            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/",\n' +
+                '            "three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.1.0/dist/index.js"\n' +
+                '        }\n' +
+                '    }\n' +
+                '    <\/script>\n' +
+                '</head>\n<body>\n' +
+                '    <script type="module">\n' +
+                '        import * as THREE from \'three\';\n' +
+                '        import { OrbitControls } from \'three/addons/controls/OrbitControls.js\';\n' +
+                '        import { CSG } from \'three-bvh-csg\';\n' +
+                '        // 创建场景、相机、渲染器\n' +
+                '        const scene = new THREE.Scene();\n' +
+                '        scene.background = new THREE.Color(0x1a1a2e);\n' +
+                '        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);\n' +
+                '        camera.position.set(5, 4, 8);\n' +
+                '        const renderer = new THREE.WebGLRenderer({ antialias: true });\n' +
+                '        renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+                '        renderer.shadowMap.enabled = true;\n' +
+                '        document.body.appendChild(renderer.domElement);\n' +
+                '        const controls = new OrbitControls(camera, renderer.domElement);\n' +
+                '        controls.enableDamping = true;\n' +
+                '        // 示例：立方体减去球体\n' +
+                '        const cubeGeo = new THREE.BoxGeometry(2, 2, 2);\n' +
+                '        const sphereGeo = new THREE.SphereGeometry(1.2, 32, 32);\n' +
+                '        // 转换为 CSG 几何体\n' +
+                '        const cubeCSG = CSG.fromGeometry(cubeGeo);\n' +
+                '        const sphereCSG = CSG.fromGeometry(sphereGeo);\n' +
+                '        // 布尔运算：差集 (cube - sphere)\n' +
+                '        const resultCSG = cubeCSG.subtract(sphereCSG);\n' +
+                '        const resultGeo = CSG.toGeometry(resultCSG);\n' +
+                '        const material = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.3, metalness: 0.1 });\n' +
+                '        const mesh = new THREE.Mesh(resultGeo, material);\n' +
+                '        mesh.castShadow = true;\n' +
+                '        mesh.receiveShadow = true;\n' +
+                '        scene.add(mesh);\n' +
+                '        // 辅助元素\n' +
+                '        scene.add(new THREE.AmbientLight(0x404060));\n' +
+                '        const dirLight = new THREE.DirectionalLight(0xffffff, 2);\n' +
+                '        dirLight.position.set(3, 5, 4);\n' +
+                '        dirLight.castShadow = true;\n' +
+                '        scene.add(dirLight);\n' +
+                '        const grid = new THREE.GridHelper(10, 10, 0x888888, 0x444444);\n' +
+                '        scene.add(grid);\n' +
+                '        function animate() {\n' +
+                '            requestAnimationFrame(animate);\n' +
+                '            controls.update();\n' +
+                '            renderer.render(scene, camera);\n' +
+                '        }\n' +
+                '        animate();\n' +
+                '        window.addEventListener("resize", () => {\n' +
+                '            camera.aspect = window.innerWidth / window.innerHeight;\n' +
+                '            camera.updateProjectionMatrix();\n' +
+                '            renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+                '        });\n' +
+                '        console.log("✅ CSG 布尔运算示例已加载");\n' +
+                '    <\/script>\n</body>\n</html>';
+        }
+        if (fileName === 'fractal-starter.html') {
+            return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n' +
+                '    <meta charset="UTF-8">\n' +
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                '    <title>3D 分形生成</title>\n' +
+                '    <style>body { margin: 0; overflow: hidden; } canvas { display: block; }</style>\n' +
+                '    <script type="importmap">\n' +
+                '    {\n' +
+                '        "imports": {\n' +
+                '            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",\n' +
+                '            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/",\n' +
+                '            "three-noise": "https://cdn.jsdelivr.net/npm/three-noise@0.1.0/dist/index.js",\n' +
+                '            "simplex-noise": "https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/dist/esm/simplex-noise.js"\n' +
+                '        }\n' +
+                '    }\n' +
+                '    <\/script>\n' +
+                '</head>\n<body>\n' +
+                '    <script type="module">\n' +
+                '        import * as THREE from \'three\';\n' +
+                '        import { OrbitControls } from \'three/addons/controls/OrbitControls.js\';\n' +
+                '        import { createNoise2D } from \'simplex-noise\';\n' +
+                '        // 使用 simplex-noise 生成分形地形\n' +
+                '        const scene = new THREE.Scene();\n' +
+                '        scene.background = new THREE.Color(0x0d0d1a);\n' +
+                '        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);\n' +
+                '        camera.position.set(10, 8, 12);\n' +
+                '        const renderer = new THREE.WebGLRenderer({ antialias: true });\n' +
+                '        renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+                '        renderer.shadowMap.enabled = true;\n' +
+                '        document.body.appendChild(renderer.domElement);\n' +
+                '        const controls = new OrbitControls(camera, renderer.domElement);\n' +
+                '        controls.enableDamping = true;\n' +
+                '        const noise2D = createNoise2D();\n' +
+                '        // 生成地形网格\n' +
+                '        const size = 20;\n' +
+                '        const segments = 80;\n' +
+                '        const geometry = new THREE.BufferGeometry();\n' +
+                '        const vertices = [];\n' +
+                '        const indices = [];\n' +
+                '        const colors = [];\n' +
+                '        for (let i = 0; i <= segments; i++) {\n' +
+                '            const x = (i / segments - 0.5) * size;\n' +
+                '            for (let j = 0; j <= segments; j++) {\n' +
+                '                const z = (j / segments - 0.5) * size;\n' +
+                '                // 多 octave 分形噪声\n' +
+                '                let y = 0;\n' +
+                '                let amp = 1.5;\n' +
+                '                let freq = 0.15;\n' +
+                '                for (let o = 0; o < 4; o++) {\n' +
+                '                    y += noise2D(x * freq, z * freq) * amp;\n' +
+                '                    amp *= 0.5;\n' +
+                '                    freq *= 2.0;\n' +
+                '                }\n' +
+                '                vertices.push(x, y, z);\n' +
+                '                // 根据高度着色\n' +
+                '                const t = (y + 3) / 6; // 归一化\n' +
+                '                colors.push(0.2 + t * 0.5, 0.1 + t * 0.4, 0.6 + t * 0.3);\n' +
+                '            }\n' +
+                '        }\n' +
+                '        for (let i = 0; i < segments; i++) {\n' +
+                '            for (let j = 0; j < segments; j++) {\n' +
+                '                const a = i * (segments + 1) + j;\n' +
+                '                const b = i * (segments + 1) + j + 1;\n' +
+                '                const c = (i + 1) * (segments + 1) + j;\n' +
+                '                const d = (i + 1) * (segments + 1) + j + 1;\n' +
+                '                indices.push(a, b, c);\n' +
+                '                indices.push(b, d, c);\n' +
+                '            }\n' +
+                '        }\n' +
+                '        geometry.setAttribute(\'position\', new THREE.Float32BufferAttribute(vertices, 3));\n' +
+                '        geometry.setIndex(indices);\n' +
+                '        geometry.setAttribute(\'color\', new THREE.Float32BufferAttribute(colors, 3));\n' +
+                '        geometry.computeVertexNormals();\n' +
+                '        const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.1, flatShading: false });\n' +
+                '        const terrain = new THREE.Mesh(geometry, material);\n' +
+                '        terrain.castShadow = true;\n' +
+                '        terrain.receiveShadow = true;\n' +
+                '        scene.add(terrain);\n' +
+                '        scene.add(new THREE.AmbientLight(0x404060));\n' +
+                '        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);\n' +
+                '        dirLight.position.set(5, 10, 7);\n' +
+                '        dirLight.castShadow = true;\n' +
+                '        scene.add(dirLight);\n' +
+                '        const grid = new THREE.GridHelper(25, 20, 0x888888, 0x444444);\n' +
+                '        scene.add(grid);\n' +
+                '        function animate() {\n' +
+                '            requestAnimationFrame(animate);\n' +
+                '            controls.update();\n' +
+                '            renderer.render(scene, camera);\n' +
+                '        }\n' +
+                '        animate();\n' +
+                '        window.addEventListener("resize", () => {\n' +
+                '            camera.aspect = window.innerWidth / window.innerHeight;\n' +
+                '            camera.updateProjectionMatrix();\n' +
+                '            renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+                '        });\n' +
+                '        console.log("✅ 分形地形已生成");\n' +
+                '    <\/script>\n</body>\n</html>';
+        }
+        // 原有默认
+        var ext = fileName.split('.').pop().toLowerCase();
         if (ext === 'html') {
             return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head><meta charset="UTF-8"><title>我的网页</title></head>\n<body>\n  <h1>欢迎</h1>\n  <button id="myButton">点击我</button>\n</body>\n</html>';
         }
@@ -444,9 +696,6 @@
             return 'body {\n  font-family: Arial;\n  margin: 0;\n  padding: 20px;\n  background: linear-gradient(135deg, #667eea, #764ba2);\n  color: white;\n  min-height: 100vh;\n}\nbutton {\n  padding: 12px 24px;\n  background: #4cc9f0;\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-weight: bold;\n}';
         }
         if (ext === 'js') {
-            if (fileName === 'script.js') {
-                return '// script.js\n// 您的 JavaScript 代码（3D 逻辑等）\nconsole.log("script.js 已加载");';
-            }
             return '// ' + fileName + '\nconsole.log("' + fileName + ' 已加载");';
         }
         return '// ' + fileName;
@@ -474,19 +723,36 @@
         }
     }
 
+    // 重置当前文件内容
+    function resetCurrentFile() {
+        if (!currentFile) { toast('没有选中文件'); return; }
+        if (confirm('重置 "' + currentFile + '" 到初始模板？')) {
+            files[currentFile] = getDefaultContent(currentFile);
+            persist();
+            sourceCode.value = files[currentFile];
+            buildPreview();
+            toast('已重置: ' + currentFile);
+        }
+    }
+
     // 事件绑定
     deviceBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleMenu(deviceMenu); });
     addFileBtn.addEventListener('click', function(e) { e.stopPropagation(); updateAddedMarks(); toggleMenu(addFileMenu); });
     dirBtn.addEventListener('click', showDir);
     backToPreviewBtn.addEventListener('click', showPreview);
     backToDirBtn.addEventListener('click', showDir);
-    resetAllBtn.addEventListener('click', resetAll);
+    resetAllBtn.addEventListener('click', function() {
+        if (confirm('确定要清空所有文件并恢复默认模板吗？此操作不可撤销。')) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    });
     deviceItems.forEach(function(item) { item.addEventListener('click', function() { setDevice(this.dataset.device); closeMenus(); }); });
     menuOptions.forEach(function(opt) { opt.addEventListener('click', function() { addFile(this.dataset.file); closeMenus(); }); });
     newFileBtn.addEventListener('click', function() { var name = prompt('输入文件名（含扩展名）：'); if (name && name.trim()) addFile(name.trim()); });
     copyBtn.addEventListener('click', copyCode);
     pasteBtn.addEventListener('click', pasteCode);
-    resetBtn.addEventListener('click', resetAll);
+    resetBtn.addEventListener('click', resetCurrentFile);
     deleteBtn.addEventListener('click', function() {
         if (!currentFile) { toast('没有选中文件'); return; }
         if (confirm('确定删除 ' + currentFile + ' ？')) { deleteFile(currentFile); showDir(); toast('已删除: ' + currentFile); }
@@ -494,14 +760,12 @@
     sourceCode.addEventListener('input', syncCurrent);
     sourceCode.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); syncCurrent(); toast('💾 已保存并更新预览'); }
-        // Tab 键缩进支持
         if (e.key === 'Tab') {
             e.preventDefault();
             var start = this.selectionStart;
             var end = this.selectionEnd;
             var spaces = '    ';
             if (e.shiftKey) {
-                // Shift+Tab 减少缩进
                 var lineStart = this.value.lastIndexOf('\n', start - 1) + 1;
                 var lineText = this.value.substring(lineStart, start);
                 if (lineText.startsWith('    ')) {
@@ -512,7 +776,6 @@
                     this.selectionStart = this.selectionEnd = start - 1;
                 }
             } else {
-                // Tab 插入 4 空格
                 this.value = this.value.substring(0, start) + spaces + this.value.substring(end);
                 this.selectionStart = this.selectionEnd = start + 4;
             }
