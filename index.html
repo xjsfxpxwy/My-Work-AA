@@ -128,13 +128,75 @@
 <script>
 (function() {
     'use strict';
-    var STORAGE_KEY = 'koder_universal_v4';
-    function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-    function load() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
+
+    // ========== IndexedDB 封装 ==========
+    var DB_NAME = 'KoderDB';
+    var STORE_NAME = 'files';
+    var DB_KEY = 'koder_universal_v4'; // 用于标识存储记录
+
+    function openDB() {
+        return new Promise(function(resolve, reject) {
+            var request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = function(e) {
+                var db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = function(e) { resolve(e.target.result); };
+            request.onerror = function(e) { reject(e.target.error); };
+        });
     }
 
-    var files = load();
+    function loadFromDB() {
+        return openDB().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx = db.transaction(STORE_NAME, 'readonly');
+                var store = tx.objectStore(STORE_NAME);
+                var get = store.get(DB_KEY);
+                get.onsuccess = function() {
+                    var result = get.result;
+                    if (result && result.data) {
+                        resolve(result.data);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                get.onerror = function() { reject(get.error); };
+                tx.oncomplete = function() { db.close(); };
+            });
+        });
+    }
+
+    function saveToDB(data) {
+        return openDB().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx = db.transaction(STORE_NAME, 'readwrite');
+                var store = tx.objectStore(STORE_NAME);
+                var put = store.put({ id: DB_KEY, data: data });
+                put.onsuccess = function() { resolve(); };
+                put.onerror = function() { reject(put.error); };
+                tx.oncomplete = function() { db.close(); };
+            });
+        });
+    }
+
+    function clearDB() {
+        return openDB().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx = db.transaction(STORE_NAME, 'readwrite');
+                var store = tx.objectStore(STORE_NAME);
+                var del = store.delete(DB_KEY);
+                del.onsuccess = function() { resolve(); };
+                del.onerror = function() { reject(del.error); };
+                tx.oncomplete = function() { db.close(); };
+            });
+        });
+    }
+
+    // ========== 原有变量和函数 ==========
+    var STORAGE_KEY = 'koder_universal_v4'; // 仅作为标识，不再用于localStorage
+    var files = {};
     var currentFile = null;
     var device = 'mobile';
 
@@ -226,7 +288,17 @@
         buildPreview();
     }
 
-    function persist() { save(files); }
+    // ========== 持久化函数（异步，捕获异常） ==========
+    function persist() {
+        // 异步保存到 IndexedDB，并捕获异常
+        saveToDB(files).then(function() {
+            // 可以显示一个小提示，但为避免干扰，不每次提示
+        }).catch(function(err) {
+            console.error('保存到 IndexedDB 失败:', err);
+            toast('❌ 保存失败: ' + (err.message || '未知错误'));
+        });
+    }
+
     function addFile(fileName) {
         if (files[fileName]) { toast('"' + fileName + '" 已存在'); return false; }
         files[fileName] = getDefaultContent(fileName);
@@ -273,7 +345,7 @@
     function syncCurrent() {
         if (currentFile && files[currentFile] !== undefined) {
             files[currentFile] = sourceCode.value;
-            persist();
+            persist(); // 异步保存
             buildPreview();
         }
     }
@@ -890,7 +962,7 @@
     function resetCurrentFile() {
         if (!currentFile) { toast('没有选中文件'); return; }
         if (confirm('重置 "' + currentFile + '" 为空内容？')) {
-            files[currentFile] = '';   // 改为空字符串
+            files[currentFile] = '';
             persist();
             sourceCode.value = files[currentFile];
             buildPreview();
@@ -906,8 +978,19 @@
     backToDirBtn.addEventListener('click', showDir);
     resetAllBtn.addEventListener('click', function() {
         if (confirm('确定要清空所有文件并恢复默认模板吗？此操作不可撤销。')) {
-            localStorage.removeItem(STORAGE_KEY);
-            location.reload();
+            // 清空所有文件，并保存空对象
+            files = {};
+            // 创建三个空文件（因为用户期望有基本文件）
+            files['index.html'] = '';
+            files['style.css'] = '';
+            files['script.js'] = '';
+            persist();
+            // 重置当前文件状态
+            currentFile = null;
+            renderFileList();
+            updateAddedMarks();
+            buildPreview();
+            toast('已重置所有文件');
         }
     });
     deviceItems.forEach(function(item) { item.addEventListener('click', function() { setDevice(this.dataset.device); closeMenus(); }); });
@@ -951,21 +1034,40 @@
     });
     window.addEventListener('resize', function() { if (device === 'desktop') buildPreview(); });
 
-    // 初始化：创建三个空文件（index.html, style.css, script.js），内容均为空字符串
-    function init() {
-        if (Object.keys(files).length === 0) {
+    // ========== 初始化：从 IndexedDB 加载数据 ==========
+    async function init() {
+        try {
+            var data = await loadFromDB();
+            if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                files = data;
+            } else {
+                // 默认三个空文件
+                files['index.html'] = '';
+                files['style.css'] = '';
+                files['script.js'] = '';
+                // 保存一次
+                await saveToDB(files);
+            }
+        } catch (err) {
+            console.error('加载 IndexedDB 失败:', err);
+            toast('⚠️ 读取存储失败，将使用空项目');
             files['index.html'] = '';
             files['style.css'] = '';
             files['script.js'] = '';
-            persist();
         }
+        // 完成初始化界面
         updateAddedMarks();
         renderFileList();
         setDevice('mobile');
         showPreview();
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
+
+    // 启动
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
 </body>
